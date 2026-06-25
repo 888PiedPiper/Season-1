@@ -2,7 +2,7 @@
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyyee_qfXr_HhGooubcMbOjRukkXdnsIWzbzVb9uMYQLgQrirF-SRfYK6dW9jfRds48/exec';
 const SHEET_ID = '1CeJjGHytehxVIxSxY_j_mx84EvGzKJNA5x9y9n-MSBs';
 const API_KEY = 'AIzaSyCB_5jPpU-GtKmmzx8FTTu33WtbNntxGvg';
-const TEAM_ROSTERS_URL = 'https://script.google.com/macros/s/AKfycbxKqRKQ29cNg0dXG_7xIbQ8_5OeClmVZsTvs8I1zVRkGZesrFbqWLviyA6Vk4ua56k2Xg/exec';
+const TEAM_ROSTERS_URL = 'https://script.google.com/macros/s/AKfycbwQyOUSadRrBHhV9ijzvsvergxCJHs8Ntgrt2OuVZv7OZgnjI1Qy6ZvDh5ppJPNtxJjQw/exec';
 
 // ==================== КЕШИРОВАНИЕ ====================
 const CACHE_KEY = 'tournament_cache';
@@ -9667,6 +9667,41 @@ function formatPowerDisplay(power) {
     return power.toString();
 }
 
+// ==================== WINRATE ЦВЕТА ====================
+function getWinrateColor(winrate) {
+    if (winrate === null || winrate === undefined || isNaN(winrate)) return '#888888';
+    if (winrate <= 46) return '#cc5555';   // Красный (не едкий)
+    if (winrate <= 48) return '#e8a040';   // Оранжевый
+    if (winrate <= 51) return '#e8d040';   // Желтый
+    if (winrate <= 56) return '#6aaf6a';   // Зеленый
+    if (winrate <= 63) return '#40b8b8';   // Бирюзовый
+    return '#b870d4';                      // Фиолетовый
+}
+
+function formatWinrate(winrate) {
+    if (winrate === null || winrate === undefined || isNaN(winrate)) return '';
+    // Если winrate целое число, показываем без .0
+    if (winrate % 1 === 0) {
+        return winrate.toFixed(0) + '%';
+    }
+    return winrate.toFixed(1) + '%';
+}
+
+function getTeamAverageWinrate(players) {
+    if (!players || players.length === 0) return null;
+    let total = 0;
+    let count = 0;
+    for (const player of players) {
+        const winrate = player.winrate !== undefined ? parseFloat(player.winrate) : null;
+        if (winrate !== null && !isNaN(winrate)) {
+            total += winrate;
+            count++;
+        }
+    }
+    if (count === 0) return null;
+    return total / count;
+}
+
 async function showTeamRoster(teamName) {
     let rosters = window._rosters;
 
@@ -9680,6 +9715,9 @@ async function showTeamRoster(teamName) {
 
     const players = rosters[teamName];
     const totalPower = getTeamTotalPower(teamName);
+    const averageWinrate = getTeamAverageWinrate(players);
+    const avgWinrateColor = getWinrateColor(averageWinrate);
+    const avgWinrateText = averageWinrate !== null ? averageWinrate.toFixed(1) + '%' : '—';
 
     let html = '<div id="team-roster-modal" class="roster-modal">';
     html += '<button class="roster-modal-close">&times;</button>';
@@ -9689,9 +9727,15 @@ async function showTeamRoster(teamName) {
     html += getAvatarHtml(teamName);
     html += '<h3>' + escapeHtml(teamName) + '</h3>';
     html += '</div>';
-    html += '<div class="roster-modal-header-compact-right">';
+    html += '<div class="roster-modal-header-compact-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">';
+    html += '<div style="display: flex; align-items: center; gap: 8px;">';
+    html += '<span class="total-power-label">Ср. WR:</span>';
+    html += '<span class="total-winrate-value" style="color: ' + avgWinrateColor + ';">' + avgWinrateText + '</span>';
+    html += '</div>';
+    html += '<div style="display: flex; align-items: center; gap: 8px;">';
     html += '<span class="total-power-label">Б/М:</span>';
     html += '<span class="total-power-value">' + formatPowerDisplay(totalPower) + '</span>';
+    html += '</div>';
     html += '</div>';
     html += '</div>';
     html += '<div class="roster-table-container compact">';
@@ -9703,6 +9747,12 @@ async function showTeamRoster(teamName) {
         const kingdom = escapeHtml(player.kingdom);
         const power = formatPowerDisplay(player.power);
         const mvpClass = player.mvp ? ' mvp-player' : '';
+
+        // ========== WINRATE ==========
+        const winrate = player.winrate !== undefined ? parseFloat(player.winrate) : null;
+        const winrateColor = getWinrateColor(winrate);
+        const winrateText = formatWinrate(winrate);
+        const winrateHtml = winrateText ? '<span class="roster-winrate-bracket" style="color: ' + winrateColor + '; --winrate-color: ' + winrateColor + ';">' + winrateText + '</span>' : '<span class="roster-winrate-bracket" style="color: #555555;">—</span>';
 
         let mvpDisplayHtml = '';
         if (player.mvp) {
@@ -9717,6 +9767,7 @@ async function showTeamRoster(teamName) {
         html += '<div class="roster-row compact' + mvpClass + '" title="' + escapeHtml(player.name) + '">';
         html += '<span class="roster-kingdom-bracket">[' + kingdom + ']</span>';
         html += '<span class="roster-name-bracket">' + displayName + '</span>';
+        html += winrateHtml;
         html += '<span class="roster-power-bracket">' + power + '</span>';
         html += '<span class="roster-mvp-bracket">' + mvpDisplayHtml + '</span>';
         html += '</div>';
@@ -9776,12 +9827,25 @@ async function showMatchComparison(team1Name, team2Name) {
     // ТЕЛО СРАВНЕНИЯ
     html += '<div class="match-compare-body">';
 
-    // Команда 1 (слева) ЛЕВО!!!
+    // ==================== КОМАНДА 1 (СЛЕВА) ====================
+    const avgWinrate1 = getTeamAverageWinrate(team1Players);
+    const avgColor1 = getWinrateColor(avgWinrate1);
+    const avgText1 = avgWinrate1 !== null ? avgWinrate1.toFixed(1) + '%' : '—';
+
     html += '<div class="match-compare-team">';
     html += '<div class="match-compare-team-header">';
     html += getAvatarHtml(team1Name);
     html += '<h3>' + escapeHtml(team1Name) + '</h3>';
-    html += '<span class="match-compare-power-value">' + formatPowerDisplay(team1Power) + '</span>'; 
+    html += '<div class="match-compare-stats-right">';
+    html += '<div style="display: flex; align-items: center; gap: 6px;">';
+    html += '<span style="color: #888888; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">Ср. WR:</span>';
+    html += '<span class="match-compare-avg-winrate" style="color: ' + avgColor1 + '; font-size: 0.85rem; font-weight: 700;">' + avgText1 + '</span>';
+    html += '</div>';
+    html += '<div style="display: flex; align-items: center; gap: 6px;">';
+    html += '<span style="color: #888888; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">Б/М:</span>';
+    html += '<span class="match-compare-power-value">' + formatPowerDisplay(team1Power) + '</span>';
+    html += '</div>';
+    html += '</div>';
     html += '</div>';
     html += '<div class="match-compare-list">';
 
@@ -9792,7 +9856,12 @@ async function showMatchComparison(team1Name, team2Name) {
         const power = formatPowerDisplay(player.power);
         const mvpClass = player.mvp ? ' mvp-player' : '';
 
-        // ========== MVP С КАРТИНКОЙ ==========
+        // ========== WINRATE ==========
+        const winrate = player.winrate !== undefined ? parseFloat(player.winrate) : null;
+        const winrateColor = getWinrateColor(winrate);
+        const winrateText = formatWinrate(winrate);
+        const winrateHtml = winrateText ? '<span class="match-compare-winrate-bracket" style="color: ' + winrateColor + '; --winrate-color: ' + winrateColor + ';">' + winrateText + '</span>' : '<span class="match-compare-winrate-bracket" style="color: #555555;">—</span>';
+
         let mvpDisplayHtml = '';
         if (player.mvp) {
             const match = player.mvp.match(/MVP\s*x\s*(\d+)/i);
@@ -9802,12 +9871,12 @@ async function showMatchComparison(team1Name, team2Name) {
                 mvpDisplayHtml = '<span class="mvp-display"><img src="image/MVP.png" class="mvp-icon" alt="MVP"><span class="mvp-count">x 1</span></span>';
             }
         }
-        // =====================================
 
         html += '<div class="match-compare-row' + mvpClass + '" title="' + escapeHtml(player.name) + '">';
         html += '<span class="match-compare-mvp">' + mvpDisplayHtml + '</span>';
         html += '<span class="match-compare-kingdom">[' + kingdom + ']</span>';
         html += '<span class="match-compare-name">' + displayName + '</span>';
+        html += winrateHtml;
         html += '<span class="match-compare-power-val">' + power + '</span>';
         html += '</div>';
         html += '\n';
@@ -9819,17 +9888,30 @@ async function showMatchComparison(team1Name, team2Name) {
     html += '</div>';
     html += '</div>';
 
-    // VS по центру
+    // ==================== VS ПО ЦЕНТРУ ====================
     html += '<div class="match-compare-vs-center">';
     html += '<div class="match-compare-vs-icon"><span class="vs-v">V</span><span class="vs-slash">/</span><span class="vs-s">S</span></div>';
     html += '</div>';
 
-    // Команда 2 (справа)
+    // ==================== КОМАНДА 2 (СПРАВА) ====================
+    const avgWinrate2 = getTeamAverageWinrate(team2Players);
+    const avgColor2 = getWinrateColor(avgWinrate2);
+    const avgText2 = avgWinrate2 !== null ? avgWinrate2.toFixed(1) + '%' : '—';
+
     html += '<div class="match-compare-team">';
     html += '<div class="match-compare-team-header right">';
+    html += '<div class="match-compare-stats-left">';
+    html += '<div style="display: flex; align-items: center; gap: 6px;">';
+    html += '<span class="match-compare-avg-winrate" style="color: ' + avgColor2 + '; font-size: 0.85rem; font-weight: 700;">' + avgText2 + '</span>';
+    html += '<span style="color: #888888; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">:Ср. WR</span>';
+    html += '</div>';
+    html += '<div style="display: flex; align-items: center; gap: 6px;">';
     html += '<span class="match-compare-power-value">' + formatPowerDisplay(team2Power) + '</span>';
-    html += getAvatarHtml(team2Name);
+    html += '<span style="color: #888888; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">:Б/М</span>';
+    html += '</div>';
+    html += '</div>';
     html += '<h3>' + escapeHtml(team2Name) + '</h3>';
+    html += getAvatarHtml(team2Name);
     html += '</div>';
     html += '<div class="match-compare-list">';
 
@@ -9840,7 +9922,12 @@ async function showMatchComparison(team1Name, team2Name) {
         const power = formatPowerDisplay(player.power);
         const mvpClass = player.mvp ? ' mvp-player' : '';
 
-        // ========== MVP С КАРТИНКОЙ ==========
+        // ========== WINRATE ==========
+        const winrate = player.winrate !== undefined ? parseFloat(player.winrate) : null;
+        const winrateColor = getWinrateColor(winrate);
+        const winrateText = formatWinrate(winrate);
+        const winrateHtml = winrateText ? '<span class="match-compare-winrate-bracket" style="color: ' + winrateColor + '; --winrate-color: ' + winrateColor + ';">' + winrateText + '</span>' : '<span class="match-compare-winrate-bracket" style="color: #555555;">—</span>';
+
         let mvpDisplayHtml = '';
         if (player.mvp) {
             const match = player.mvp.match(/MVP\s*x\s*(\d+)/i);
@@ -9850,10 +9937,10 @@ async function showMatchComparison(team1Name, team2Name) {
                 mvpDisplayHtml = '<span class="mvp-display"><img src="image/MVP.png" class="mvp-icon" alt="MVP"><span class="mvp-count">x 1</span></span>';
             }
         }
-        // =====================================
 
         html += '<div class="match-compare-row' + mvpClass + '" title="' + escapeHtml(player.name) + '">';
         html += '<span class="match-compare-power-val">' + power + '</span>';
+        html += winrateHtml;
         html += '<span class="match-compare-name">' + displayName + '</span>';
         html += '<span class="match-compare-kingdom">[' + kingdom + ']</span>';
         html += '<span class="match-compare-mvp">' + mvpDisplayHtml + '</span>';
