@@ -2215,7 +2215,8 @@ function escapeHtml(str) {
 function formatPlayerName(name) {
     if (!name) return '';
     const escaped = escapeHtml(name);
-    return escaped.replace(/\[CAP\]/g, '<span style="color: #ccaa66; font-weight: 700;">[CAP]</span>');
+    // Заменяем [CAP] на картинку
+    return escaped.replace(/\[CAP\]/g, '<img src="image/CAP.png" class="cap-icon" alt="CAP" title="CAP">');
 }
 
 function truncateNameWithFormat(name) {

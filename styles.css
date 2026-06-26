@@ -4109,6 +4109,18 @@ footer {
     border-radius: 0 4px 4px 0;
 }
 
+/* ==================== CAP ИКОНКА ==================== */
+.cap-icon {
+    width: 22px;
+    height: 22px;
+    vertical-align: middle;
+    display: inline-block;
+    object-fit: contain;
+    margin: 0 2px;
+    position: relative;
+    top: -1px;  /* небольшая корректировка для центровки */
+}
+
 /* ==================== УПРАВЛЕНИЕ MVP ==================== */
 .mvp-manager-modal {
     display: flex;
