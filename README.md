@@ -6,3 +6,8 @@ npx gulp watch
 # 5. По окончании: Ctrl + C
 Не запускается применяем команду в терминале 
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+Загрузка:
+Проверить статус изменений: git status
+Добавить все изменения: git add .
+Создайте коммит: git commit -m "feat: заменил [CAP] на иконку image/CAP.png, центровка иконки"
+Отправьте на GitHub: git push origin master

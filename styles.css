@@ -2469,8 +2469,8 @@ footer {
 .prediction-vote-btn-icon:hover { background: transparent !important; border: none !important; }
 
 .prediction-vote-icon {
-    width: 48px;
-    height: 48px;
+    width: 64px;
+    height: 64px;
     object-fit: contain;
     cursor: pointer;
     transition: transform 0.2s ease;
@@ -2489,9 +2489,10 @@ footer {
 }
 
 .prediction-deadline {
-    font-size: 0.7rem;
+    font-size: 0.80rem;
     color: #888888;
     margin-bottom: 0.75rem;
+    line-height: 1.4;
 }
 
 /* Диаграмма */
