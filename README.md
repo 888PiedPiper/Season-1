@@ -11,3 +11,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 Добавить все изменения: git add .
 Создайте коммит: git commit -m "feat: заменил [CAP] на иконку image/CAP.png, центровка иконки"
 Отправьте на GitHub: git push origin master
+
+git add .
+git commit -m "feat: увеличил размер текстов дедлайнов в прогнозах"
+git push origin master
