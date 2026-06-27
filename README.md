@@ -13,5 +13,5 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 Отправьте на GitHub: git push origin master
 
 git add .
-git commit -m "feat: увеличил размер текстов дедлайнов в прогнозах"
+git commit -m "feat: изменил статус прогнозов, и кнопку LIVE"
 git push origin master

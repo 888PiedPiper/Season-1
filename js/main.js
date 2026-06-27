@@ -2460,26 +2460,39 @@ function initAutoRefresh() {
             // Проверяем, открыто ли модальное окно прогнозов
             const predictionModal = document.getElementById('prediction-modal');
             if (predictionModal && predictionModal.style.display === 'flex') {
-                // Если модальное окно открыто, обновляем данные в фоне
                 await backgroundLoadAllPredictions();
                 return;
             }
 
-            // Проверяем изменения в турнирных данных
             const response = await fetch(`${SCRIPT_URL}?action=getAllData`);
             const data = await response.json();
 
             if (data.success) {
-                // Создаём хеш данных для сравнения (БЕЗ ПРИЗОВ!)
+                // ========== СОХРАНЯЕМ РОСТЕРЫ ДЛЯ СРАВНЕНИЯ ==========
+                let rostersForHash = window._rosters || {};
+                if (data.rosters) {
+                    rostersForHash = data.rosters;
+                } else {
+                    try {
+                        const rosterResponse = await fetch(`${TEAM_ROSTERS_URL}?action=getTeamRosters`);
+                        const rosterData = await rosterResponse.json();
+                        if (rosterData.success && rosterData.rosters) {
+                            rostersForHash = rosterData.rosters;
+                        }
+                    } catch(e) {
+                        console.log('Rosters not available for hash');
+                    }
+                }
+
+                // Создаём хеш данных для сравнения (БЕЗ ПРИЗОВ!, НО С РОСТЕРАМИ)
                 const newHash = JSON.stringify({
                     tournament: data.tournament,
-                    schedule: data.schedule
-                    // prizes: data.prizes — ИСКЛЮЧАЕМ!
+                    schedule: data.schedule,
+                    rosters: rostersForHash
                 });
 
-                // Если данные изменились (игнорируем изменения призов)
                 if (currentDataHash && currentDataHash !== newHash) {
-                    // Показываем уведомление об обновлении
+                    // ========== ЕДИНОЕ УВЕДОМЛЕНИЕ ==========
                     showToast(t('data_tournament_updated'), 'info', t('update'), 30000);
 
                     // Обновляем данные
@@ -2506,6 +2519,16 @@ function initAutoRefresh() {
                         window.teamAvatars = { ...window.teamAvatars, ...data.avatars };
                     }
 
+                    // Обновляем ростера
+                    if (rostersForHash && Object.keys(rostersForHash).length > 0) {
+                        window._rosters = rostersForHash;
+                        calculateTotalPowers(rostersForHash);
+                        // Перерисовываем всё
+                        renderGroups();
+                        renderPlayoffs();
+                        renderResults();
+                    }
+
                     // Перерисовываем
                     renderGroups();
                     renderPlayoffs();
@@ -2519,22 +2542,21 @@ function initAutoRefresh() {
                     startCountdownTimer();
                     initPredictionDates();
 
-                    // Обновляем хеш
                     currentDataHash = newHash;
                 }
             }
         } catch (error) {
-            // Тихая ошибка, не показываем пользователю
             console.log('Auto-refresh error:', error);
         }
-    }, 30000); // 30 секунд
+    }, 30000);
 
-    // Сохраняем начальный хеш после загрузки (БЕЗ ПРИЗОВ!)
+    // Сохраняем начальный хеш после загрузки (БЕЗ ПРИЗОВ!, НО С РОСТЕРАМИ)
     setTimeout(() => {
+        const rostersForHash = window._rosters || {};
         currentDataHash = JSON.stringify({
             tournament: tournamentData,
-            schedule: scheduleData
-            // prizes: prizeData — ИСКЛЮЧАЕМ!
+            schedule: scheduleData,
+            rosters: rostersForHash
         });
     }, 2000);
 }
@@ -4180,17 +4202,25 @@ function renderMatchCard(group, match, idx) {
     
     const hasStreamUrl = safeMatch.streamUrl && safeMatch.streamUrl !== '';
     
+    // ========== КНОПКА LIVE С ТОЧКОЙ ==========
     let liveBtnClass = '';
-    if (!hasStreamUrl) {
+    let liveDotHtml = '<span class="live-dot"></span>';
+
+    if (isCompleted) {
+        // Если матч завершён — показываем кнопку с красной точкой (запись доступна)
         liveBtnClass = 'match-live-btn-finished';
-    } else if (isLiveNow) {
+    } else if (isLiveNow && hasStreamUrl) {
         liveBtnClass = 'match-live-btn';
-    } else {
+    } else if (hasStreamUrl) {
         liveBtnClass = 'match-live-btn-dimmed';
+    } else {
+        // Нет трансляции — серая точка
+        liveBtnClass = 'match-live-btn-finished no-stream';
+        liveDotHtml = '<span class="live-dot"></span>'; // серая точка
     }
     
     const streamLink = hasStreamUrl ? safeMatch.streamUrl : '#';
-    const pulseAnimation = (isLiveNow && hasStreamUrl) ? 'live-pulse' : '';
+    const pulseAnimation = (isLiveNow && hasStreamUrl && !isCompleted) ? 'live-pulse' : '';
     
     const score1Class = safeMatch.score1 === 1 ? 'match-score-win' : 'match-score-loss';
     const score2Class = safeMatch.score2 === 1 ? 'match-score-win' : 'match-score-loss';
@@ -4265,7 +4295,9 @@ function renderMatchCard(group, match, idx) {
         <div class="match-card ${isCompleted ? 'completed' : ''}" data-team1="${escapeHtml(safeMatch.team1)}" data-team2="${escapeHtml(safeMatch.team2)}">
             <div class="match-info">
                 <div class="match-datetime">${formatDateDisplay(safeMatch.date)}</div>
-                <a href="${streamLink}" target="_blank" class="${liveBtnClass} ${pulseAnimation}">${t('live')}</a>
+                <a href="${streamLink}" target="_blank" class="${liveBtnClass} ${pulseAnimation}">
+                    ${liveDotHtml}${t('live')}
+                </a>
             </div>
             ${isAdmin ? adminHtml : viewerHtml}
         </div>
@@ -4565,16 +4597,30 @@ function renderPlayoffMatchCard(match, matchId, extraClass = '') {
     const liveStatus = getLiveStatus(effectiveDate, safeMatch.winner);
     const isLiveNow = liveStatus.isLive;
     
+    // ========== КНОПКА LIVE С ТОЧКОЙ ==========
     let liveBtnClass = '';
-    if (!hasStreamUrl) {
+    let liveDotHtml = '<span class="live-dot"></span>';
+
+    // Проверяем, есть ли победитель (матч завершён)
+    if (isCompleted) {
         liveBtnClass = 'match-live-btn-finished';
-    } else if (isLiveNow) {
+    } 
+    // Если матч ещё идёт и есть ссылка на стрим
+    else if (isLiveNow && hasStreamUrl) {
         liveBtnClass = 'match-live-btn';
-    } else {
+    } 
+    // Если есть ссылка на стрим, но матч ещё не начался
+    else if (hasStreamUrl) {
         liveBtnClass = 'match-live-btn-dimmed';
+    } 
+    // Нет ссылки на стрим
+    else {
+        liveBtnClass = 'match-live-btn-finished no-stream';
+        liveDotHtml = '<span class="live-dot"></span>';
     }
     
-    const pulseAnimation = (isLiveNow && hasStreamUrl) ? 'live-pulse' : '';
+    // Анимация пульсации только для LIVE
+    const pulseAnimation = (isLiveNow && hasStreamUrl && !isCompleted) ? 'live-pulse' : '';
     const vsAnimationClass = isLiveNow ? 'match-vs-live' : '';
     
     const team1AvatarHtml = !isTBDTeam1 ? getAvatarHtml(safeMatch.team1) : '';
@@ -4601,7 +4647,9 @@ function renderPlayoffMatchCard(match, matchId, extraClass = '') {
         <div class="playoff-match-card ${extraClass} ${isCompleted ? 'completed' : ''}" data-team1="${escapeHtml(safeMatch.team1)}" data-team2="${escapeHtml(safeMatch.team2)}">
             <div class="match-header">
                 <span class="match-datetime">${showDate}</span>
-                <a href="${streamLink}" target="_blank" class="live-btn ${liveBtnClass} ${pulseAnimation}">${t('live')}</a>
+                <a href="${streamLink}" target="_blank" class="${liveBtnClass} ${pulseAnimation}">
+                    ${liveDotHtml}${t('live')}
+                </a>
             </div>
             <div class="match-content">
                 <div class="playoff-teams-row">
@@ -7699,6 +7747,7 @@ const PREDICTION_CONFIG = {
         endDate: null,
         votingActive: false,
         rankingVisible: false,
+        isClosed: false,
         hasRanking: true,
         rankingType: 'group'
     },
@@ -7710,6 +7759,7 @@ const PREDICTION_CONFIG = {
         endDate: null,
         votingActive: false,
         rankingVisible: false,
+        isClosed: false,
         hasRanking: true,
         rankingType: 'playoffs'
     },
@@ -7721,6 +7771,7 @@ const PREDICTION_CONFIG = {
         endDate: null,
         votingActive: false,
         rankingVisible: false,
+        isClosed: false,
         hasRanking: true,
         rankingType: 'grandFinal'
     }
@@ -7784,55 +7835,23 @@ function hasGrandFinalTeams() {
 
 // Обновление статусов этапов прогнозов
 function updatePredictionStagesStatus() {
-    // Получаем текущее UTC время
-    const now = new Date();
-    const nowUTC = new Date(Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth(),
-        now.getUTCDate(),
-        now.getUTCHours(),
-        now.getUTCMinutes(),
-        now.getUTCSeconds()
+    const nowUTC = new Date();
+    const nowUTCfixed = new Date(Date.UTC(
+        nowUTC.getUTCFullYear(),
+        nowUTC.getUTCMonth(),
+        nowUTC.getUTCDate(),
+        nowUTC.getUTCHours(),
+        nowUTC.getUTCMinutes(),
+        nowUTC.getUTCSeconds()
     ));
 
     // === АРЕНА ГОЛОСОВ ===
     if (PREDICTION_CONFIG.arenaVotes) {
         const arenaVotes = PREDICTION_CONFIG.arenaVotes;
-
-        // Дата начала турнира из расписания
-        let tournamentStart = null;
-        if (scheduleData.periodStart) {
-            tournamentStart = new Date(scheduleData.periodStart);
-            if (!isNaN(tournamentStart.getTime())) {
-                tournamentStart = new Date(Date.UTC(
-                    tournamentStart.getUTCFullYear(),
-                    tournamentStart.getUTCMonth(),
-                    tournamentStart.getUTCDate(),
-                    tournamentStart.getUTCHours(),
-                    tournamentStart.getUTCMinutes(),
-                    tournamentStart.getUTCSeconds()
-                ));
-            }
-        }
-
-        // Дата окончания турнира
-        let tournamentEnd = null;
-        if (scheduleData.periodEnd) {
-            tournamentEnd = new Date(scheduleData.periodEnd);
-            if (!isNaN(tournamentEnd.getTime())) {
-                tournamentEnd = new Date(Date.UTC(
-                    tournamentEnd.getUTCFullYear(),
-                    tournamentEnd.getUTCMonth(),
-                    tournamentEnd.getUTCDate(),
-                    tournamentEnd.getUTCHours(),
-                    tournamentEnd.getUTCMinutes(),
-                    tournamentEnd.getUTCSeconds()
-                ));
-            }
-        }
-
+        let tournamentStart = scheduleData.periodStart ? new Date(scheduleData.periodStart) : null;
+        let tournamentEnd = scheduleData.periodEnd ? new Date(scheduleData.periodEnd) : null;
+        
         let votingActive = false;
-
         if (tournamentStart) {
             if (tournamentEnd) {
                 votingActive = nowUTC >= tournamentStart && nowUTC <= tournamentEnd;
@@ -7840,201 +7859,150 @@ function updatePredictionStagesStatus() {
                 votingActive = nowUTC >= tournamentStart;
             }
         }
-
         arenaVotes.votingActive = votingActive;
-        // Для Арены голосов рейтинг не показываем
         arenaVotes.rankingVisible = false;
+        arenaVotes.isClosed = false;
     }
 
     // === ГРУППОВОЙ ЭТАП ===
     if (PREDICTION_CONFIG.groupStage) {
         const groupStage = PREDICTION_CONFIG.groupStage;
-
-        // Дата начала турнира из расписания
-        let tournamentStart = null;
-        if (scheduleData.periodStart) {
-            tournamentStart = new Date(scheduleData.periodStart);
-            if (!isNaN(tournamentStart.getTime())) {
-                tournamentStart = new Date(Date.UTC(
-                    tournamentStart.getUTCFullYear(),
-                    tournamentStart.getUTCMonth(),
-                    tournamentStart.getUTCDate(),
-                    tournamentStart.getUTCHours(),
-                    tournamentStart.getUTCMinutes(),
-                    tournamentStart.getUTCSeconds()
-                ));
-            }
-        }
-
-        // Дата первого матча
+        let tournamentStart = scheduleData.periodStart ? new Date(scheduleData.periodStart) : null;
         let firstMatchDate = getFirstGroupMatchTime();
-        if (firstMatchDate && !isNaN(firstMatchDate.getTime())) {
-            firstMatchDate = new Date(Date.UTC(
-                firstMatchDate.getUTCFullYear(),
-                firstMatchDate.getUTCMonth(),
-                firstMatchDate.getUTCDate(),
-                firstMatchDate.getUTCHours(),
-                firstMatchDate.getUTCMinutes(),
-                firstMatchDate.getUTCSeconds()
-            ));
-        }
-
+        
         let votingActive = false;
-
-        if (tournamentStart) {
+        let isClosed = false;
+        
+        // Если турнир ещё не начался
+        if (tournamentStart && nowUTC < tournamentStart) {
+            votingActive = false;
+            isClosed = false;
+        }
+        // Если турнир начался
+        else if (tournamentStart) {
+            // Если есть дата первого матча
             if (firstMatchDate) {
-                votingActive = nowUTC >= tournamentStart && nowUTC < firstMatchDate;
+                // До первого матча — активно
+                if (nowUTC < firstMatchDate) {
+                    votingActive = true;
+                    isClosed = false;
+                }
+                // После первого матча — закрыто
+                else {
+                    votingActive = false;
+                    isClosed = true;
+                }
             } else {
-                votingActive = nowUTC >= tournamentStart;
+                // Если даты матча нет — активно (голосование открыто)
+                votingActive = true;
+                isClosed = false;
             }
         }
-
+        
+        // Если групповой этап завершён (есть победители) — закрыто и рейтинг виден
+        if (isGroupStageResultsKnown()) {
+            votingActive = false;
+            isClosed = true;
+        }
+        
         groupStage.votingActive = votingActive;
         groupStage.rankingVisible = isGroupStageResultsKnown();
+        groupStage.isClosed = isClosed;
     }
 
     // === ПЛЕЙ-ОФФ ===
     if (PREDICTION_CONFIG.playoffs) {
         const playoffs = PREDICTION_CONFIG.playoffs;
-
-        // Голосование доступно, если групповой этап завершён (известны 4 команды)
         const groupStageCompleted = isGroupStageResultsKnown();
+        const hasGrandFinalTeams = tournamentData.playoffs.grandFinal.team1 && tournamentData.playoffs.grandFinal.team1 !== '' && tournamentData.playoffs.grandFinal.team1 !== 'TBD' &&
+                                   tournamentData.playoffs.grandFinal.team2 && tournamentData.playoffs.grandFinal.team2 !== '' && tournamentData.playoffs.grandFinal.team2 !== 'TBD';
         
-        // Проверяем, есть ли две команды в гранд-финале
-        const grandFinal = tournamentData.playoffs.grandFinal;
-        const hasGrandFinalTeams = grandFinal.team1 && grandFinal.team1 !== '' && grandFinal.team1 !== 'TBD' &&
-                                   grandFinal.team2 && grandFinal.team2 !== '' && grandFinal.team2 !== 'TBD';
+        let earliestMatchDate = getFirstPlayoffMatchTime();
         
-        // Находим самую раннюю дату из верхнего финала и полуфинала нижней сетки
-        let earliestMatchDate = null;
-        const nowUTC = new Date();
-        const nowUTCfixed = new Date(Date.UTC(
-            nowUTC.getUTCFullYear(),
-            nowUTC.getUTCMonth(),
-            nowUTC.getUTCDate(),
-            nowUTC.getUTCHours(),
-            nowUTC.getUTCMinutes(),
-            nowUTC.getUTCSeconds()
-        ));
-        
-        // Функция для парсинга даты матча
-        function parseMatchDate(dateStr) {
-            if (!dateStr || dateStr === '') return null;
-            // Если дата уже в формате с Z (UTC)
-            let dateToParse = dateStr;
-            if (!dateToParse.endsWith('Z') && dateToParse.includes('T')) {
-                dateToParse = dateToParse + 'Z';
-            }
-            let matchDate = new Date(dateToParse);
-            if (!isNaN(matchDate.getTime())) {
-                return matchDate;
-            }
-            return null;
-        }
-        
-        // Проверяем верхний финал
-        const upperFinalMatch = tournamentData.playoffs.upperFinal;
-        if (upperFinalMatch && upperFinalMatch.date) {
-            const matchDate = parseMatchDate(upperFinalMatch.date);
-            if (matchDate && (!earliestMatchDate || matchDate < earliestMatchDate)) {
-                earliestMatchDate = matchDate;
-            }
-        }
-        
-        // Проверяем полуфинал нижней сетки
-        const lowerSemiMatch = tournamentData.playoffs.lowerSemi;
-        if (lowerSemiMatch && lowerSemiMatch.date) {
-            const matchDate = parseMatchDate(lowerSemiMatch.date);
-            if (matchDate && (!earliestMatchDate || matchDate < earliestMatchDate)) {
-                earliestMatchDate = matchDate;
-            }
-        }
-
         let votingActive = false;
+        let isClosed = false;
         let rankingVisible = false;
-
-        if (groupStageCompleted) {
-            // Групповой этап завершён - форма открыта
-            if (earliestMatchDate) {
-                // Голосование активно ДО самого раннего матча
-                votingActive = nowUTCfixed < earliestMatchDate;
-            } else {
-                // Если даты не установлены, голосование открыто
-                votingActive = true;
-            }
-            
-            // Рейтинг виден ТОЛЬКО когда две команды появились в гранд-финале
-            rankingVisible = hasGrandFinalTeams;
-        } else {
-            // Групповой этап не завершён - форма закрыта
+        
+        // Если групповой этап НЕ завершён — СКОРО (upcoming)
+        if (!groupStageCompleted) {
             votingActive = false;
+            isClosed = false;
             rankingVisible = false;
         }
-
+        // Если групповой этап завершён
+        else {
+            // Если есть дата первого матча
+            if (earliestMatchDate) {
+                // До первого матча — активно
+                if (nowUTC < earliestMatchDate) {
+                    votingActive = true;
+                    isClosed = false;
+                }
+                // После первого матча — закрыто
+                else {
+                    votingActive = false;
+                    isClosed = true;
+                }
+            } else {
+                // Если даты матча нет — активно (голосование открыто)
+                votingActive = true;
+                isClosed = false;
+            }
+            // Рейтинг виден, когда две команды в гранд-финале
+            rankingVisible = hasGrandFinalTeams;
+        }
+        
         playoffs.votingActive = votingActive;
         playoffs.rankingVisible = rankingVisible;
-        
+        playoffs.isClosed = isClosed;
     }
 
     // === ГРАНД-ФИНАЛ ===
     if (PREDICTION_CONFIG.grandFinal) {
         const grandFinalStage = PREDICTION_CONFIG.grandFinal;
-        
-        // Получаем данные из карточки ГРАНД-ФИНАЛ
-        const grandFinalMatch = tournamentData.playoffs.grandFinal;
-        const hasGrandFinalTeams = grandFinalMatch.team1 && grandFinalMatch.team1 !== '' && grandFinalMatch.team1 !== 'TBD' &&
-                                   grandFinalMatch.team2 && grandFinalMatch.team2 !== '' && grandFinalMatch.team2 !== 'TBD';
-        
-        // Парсим дату из карточки ГРАНД-ФИНАЛ
-        let matchDate = null;
-        if (grandFinalMatch.date && grandFinalMatch.date !== '') {
-            let dateStr = grandFinalMatch.date;
-            if (dateStr.length === 16) {
-                dateStr = dateStr + ':00';
-            }
-            matchDate = new Date(dateStr + 'Z');
-            if (isNaN(matchDate.getTime())) {
-                matchDate = null;
-            }
-        }
-        
-        const nowUTC = new Date();
-        const nowUTCfixed = new Date(Date.UTC(
-            nowUTC.getUTCFullYear(),
-            nowUTC.getUTCMonth(),
-            nowUTC.getUTCDate(),
-            nowUTC.getUTCHours(),
-            nowUTC.getUTCMinutes(),
-            nowUTC.getUTCSeconds()
-        ));
+        const hasGrandFinalTeams = tournamentData.playoffs.grandFinal.team1 && tournamentData.playoffs.grandFinal.team1 !== '' && tournamentData.playoffs.grandFinal.team1 !== 'TBD' &&
+                                   tournamentData.playoffs.grandFinal.team2 && tournamentData.playoffs.grandFinal.team2 !== '' && tournamentData.playoffs.grandFinal.team2 !== 'TBD';
+        let matchDate = getGrandFinalMatchTime();
         
         let votingActive = false;
+        let isClosed = false;
         let rankingVisible = false;
         
-        if (hasGrandFinalTeams) {
-            // Команды определены — форма открыта
-            if (matchDate) {
-                votingActive = nowUTCfixed < matchDate;
-                // Рейтинг виден, когда есть победитель
-                const hasWinner = grandFinalMatch.winner && grandFinalMatch.winner !== '' && grandFinalMatch.winner !== 'TBD';
-                rankingVisible = hasWinner;
-            } else {
-                // Если дата не установлена, голосование открыто
-                votingActive = true;
-                rankingVisible = false;
-            }
-        } else {
-            // Команды не определены — форма закрыта
+        // Если нет двух команд в гранд-финале — СКОРО (upcoming)
+        if (!hasGrandFinalTeams) {
             votingActive = false;
+            isClosed = false;
             rankingVisible = false;
+        }
+        // Если две команды есть
+        else {
+            // Если есть дата матча
+            if (matchDate) {
+                // До матча — активно
+                if (nowUTC < matchDate) {
+                    votingActive = true;
+                    isClosed = false;
+                }
+                // После матча — закрыто
+                else {
+                    votingActive = false;
+                    isClosed = true;
+                }
+            } else {
+                // Если даты матча нет — активно (голосование открыто)
+                votingActive = true;
+                isClosed = false;
+            }
+            // Рейтинг виден, когда есть победитель
+            const hasWinner = tournamentData.playoffs.grandFinal.winner && tournamentData.playoffs.grandFinal.winner !== '' && tournamentData.playoffs.grandFinal.winner !== 'TBD';
+            rankingVisible = hasWinner;
         }
         
         grandFinalStage.votingActive = votingActive;
         grandFinalStage.rankingVisible = rankingVisible;
-        
+        grandFinalStage.isClosed = isClosed;
     }
 }
-
 // Обновление статусов этапов в уже открытом модальном окне
 function updatePredictionStagesStatusUI() {
     for (const [key, stage] of Object.entries(PREDICTION_CONFIG)) {
@@ -8044,20 +8012,14 @@ function updatePredictionStagesStatusUI() {
         const header = document.querySelector(`#prediction-block-${key} .prediction-stage-header`);
         if (!statusSpan) continue;
         
-        const isActive = stage.votingActive || false;
-        const isRankingVisible = stage.rankingVisible || false;
+        const status = getStageStatus(stage, key);  // ← передаём key
         
-        let status = 'upcoming';
-        if (isActive) status = 'active';
-        else if (isRankingVisible) status = 'closed';
-        
-        // Обновляем атрибут шапки
         if (header) {
             header.setAttribute('data-status', status);
         }
         
         const texts = getStatusTexts(key);
-        statusSpan.textContent = texts[status];
+        statusSpan.textContent = texts[status] || texts.upcoming;
         statusSpan.className = `prediction-stage-status ${status}`;
     }
 }
@@ -8224,14 +8186,19 @@ function initPredictionDates() {
 }
 
 // Определение статуса этапа (для отображения в UI)
-function getStageStatus(stage) {
+function getStageStatus(stage, stageKey) {
     if (!stage) return 'upcoming';
-    if (stage.votingActive) {
-        return 'active';
-    }
-    if (stage.rankingVisible) {
-        return 'closed';
-    }
+    
+    // Активно — голосование идёт
+    if (stage.votingActive) return 'active';
+    
+    // Закрыто — голосование завершено
+    if (stage.isClosed) return 'closed';
+    
+    // Рейтинг виден — тоже значит, что голосование закрыто
+    if (stage.rankingVisible) return 'closed';
+    
+    // Во всех остальных случаях — СКОРО
     return 'upcoming';
 }
 
@@ -8468,6 +8435,9 @@ function renderRankings(containerId, data, type) {
 }
 
 function renderStageBlock(stageKey, stage) {
+    // ========== ПОЛУЧАЕМ СТАТУС С УЧЁТОМ stageKey ==========
+    const status = getStageStatus(stage, stageKey);
+
     const isActive = stage.votingActive || false;
     const isRankingVisible = stage.rankingVisible || false;
 
@@ -8478,9 +8448,8 @@ function renderStageBlock(stageKey, stage) {
         upcoming: 'upcoming'
     };
     
-    let status = 'upcoming';
-    if (isActive) status = 'active';
-    else if (isRankingVisible) status = 'closed';
+    // Используем полученный статус
+    const statusText = statusTexts[status] || statusTexts.upcoming;
 
     // Форматируем дату в UTC для разных этапов
     let deadlineText = '';

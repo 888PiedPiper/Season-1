@@ -1067,58 +1067,138 @@ footer {
 
 .match-winner .match-team-name { color: #6aaf6a; }
 
-/* Кнопки LIVE */
-.match-live-btn-finished {
-    background: #2a2a2a;
-    color: #666666;
-    cursor: default;
-    pointer-events: none;
-    text-decoration: none;
-    padding: 0.2rem 0.7rem;
-    border-radius: 4px;
-    font-size: 0.65rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    display: inline-block;
-}
-
-.match-live-btn {
-    background: #cc3333;
-    color: #ffffff;
-    padding: 0.2rem 0.7rem;
-    border-radius: 4px;
-    font-size: 0.65rem;
-    font-weight: bold;
-    text-transform: uppercase;
+/* ==================== LIVE КНОПКА (УНИВЕРСАЛЬНАЯ) ==================== */
+.match-live-btn,
+.match-live-btn-finished,
+.match-live-btn-dimmed,
+.live-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;              /* ← уменьшил отступ между точкой и текстом */
+    padding: 0.1rem 0.5rem !important; /* ← уменьшил padding */
+    border-radius: 4px !important;
+    font-size: 0.65rem !important;    /* ← оставил как было */
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+    text-decoration: none !important;
     cursor: pointer;
     transition: all 0.2s ease;
-    text-decoration: none;
-    display: inline-block;
-}
-.match-live-btn:hover { background: #ff4444; }
-
-.live-pulse { animation: livePulse 1s ease-in-out infinite; }
-
-@keyframes livePulse {
-    0%, 100% { opacity: 1; background: #cc3333; }
-    50% { opacity: 0.85; background: #ff4444; }
+    line-height: 1;
+    vertical-align: middle;
+    min-height: 22px;                 /* ← уменьшил минимальную высоту */
+    height: auto !important;
 }
 
-.match-live-btn-dimmed {
-    background: #5a2a2a;
-    color: #aa8888;
-    cursor: pointer;
-    padding: 0.2rem 0.7rem;
-    border-radius: 4px;
-    font-size: 0.65rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    text-decoration: none;
-    display: inline-block;
+/* LIVE — прямой эфир */
+.match-live-btn,
+.live-btn.match-live-btn {
+    background: linear-gradient(135deg, #cc3333, #ff4444, #cc3333) !important;
+    background-size: 200% 200% !important;
+    color: #ffffff !important;
+    animation: liveGradient 2s ease-in-out infinite;
 }
-.match-live-btn-dimmed:hover {
-    background: #6a3a3a;
-    color: #ccaaaa;
+.match-live-btn:hover,
+.live-btn.match-live-btn:hover {
+    filter: brightness(1.2);
+}
+
+@keyframes liveGradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Запись доступна */
+.match-live-btn-finished,
+.live-btn.match-live-btn-finished {
+    background: #2a2a2a !important;
+    color: #666666 !important;
+}
+.match-live-btn-finished:hover,
+.live-btn.match-live-btn-finished:hover {
+    background: #3a3a3a !important;
+    color: #888888 !important;
+}
+
+/* Скоро LIVE */
+.match-live-btn-dimmed,
+.live-btn.match-live-btn-dimmed {
+    background: #5a2a2a !important;
+    color: #aa8888 !important;
+}
+.match-live-btn-dimmed:hover,
+.live-btn.match-live-btn-dimmed:hover {
+    background: #6a3a3a !important;
+    color: #ccaaaa !important;
+}
+
+/* ===== ТОЧКИ ===== */
+.live-dot {
+    display: inline-block !important;
+    width: 5px !important;
+    height: 5px !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
+    transition: all 0.3s ease;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Белая точка — LIVE (во время стрима) */
+.match-live-btn .live-dot,
+.live-btn.match-live-btn .live-dot {
+    background: #ffffff !important;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.6) !important;
+    animation: liveDotPulse 1.5s ease-in-out infinite !important;
+}
+
+/* Красная точка — запись доступна */
+.match-live-btn-finished .live-dot,
+.live-btn.match-live-btn-finished .live-dot {
+    background: #cc3333 !important;
+    box-shadow: 0 0 6px rgba(204, 51, 51, 0.4) !important;
+    animation: none !important;
+}
+
+/* Тусклая точка — скоро LIVE */
+.match-live-btn-dimmed .live-dot,
+.live-btn.match-live-btn-dimmed .live-dot {
+    background: #aa4444 !important;
+    box-shadow: 0 0 4px rgba(170, 68, 68, 0.3) !important;
+    animation: liveDotPulse 2s ease-in-out infinite !important;
+}
+
+/* Серая точка — нет трансляции */
+.match-live-btn-finished.no-stream .live-dot,
+.live-btn.match-live-btn-finished.no-stream .live-dot {
+    background: #555555 !important;
+    box-shadow: none !important;
+    animation: none !important;
+}
+
+@keyframes liveDotPulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(0.85);
+    }
+}
+
+/* ===== СТАРЫЕ СТИЛИ ДЛЯ СОВМЕСТИМОСТИ ===== */
+.match-live-btn-finished .live-dot,
+.match-live-btn .live-dot,
+.match-live-btn-dimmed .live-dot {
+    display: inline-block !important;
+    width: 8px !important;
+    height: 8px !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 /* ==================== АВАТАРЫ ==================== */
@@ -1283,36 +1363,6 @@ footer {
     font-size: 0.8rem;
     font-weight: 500;
     color: #ccaa66;
-}
-
-.playoff-match-card .live-btn {
-    background: #cc3333;
-    color: #ffffff;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 0.6rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-decoration: none;
-    display: inline-block;
-}
-.playoff-match-card .live-btn:hover { background: #ff4444; }
-.playoff-match-card .live-btn.live-pulse { animation: livePulse 1s ease-in-out infinite; }
-.playoff-match-card .live-btn.match-live-btn-finished {
-    background: #2a2a2a;
-    color: #666666;
-    cursor: default;
-    pointer-events: none;
-}
-.playoff-match-card .live-btn.match-live-btn-dimmed {
-    background: #5a2a2a;
-    color: #aa8888;
-}
-.playoff-match-card .live-btn.match-live-btn-dimmed:hover {
-    background: #6a3a3a;
-    color: #ccaaaa;
 }
 
 .playoff-match-card .match-content { padding: 12px; position: relative; z-index: 2; }
