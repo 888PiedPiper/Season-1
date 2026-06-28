@@ -9711,6 +9711,15 @@ async function showTeamRoster(teamName) {
     html += '<div class="roster-table-container compact">';
     html += '<div class="roster-list compact">';
 
+    // ========== ЗАГОЛОВОК ТАБЛИЦЫ ==========
+    html += '<div class="roster-table-header">';
+    html += '<span class="header-item" style="min-width: 50px; max-width: 50px; text-align: center;">MVP</span>';
+    html += '<span class="header-item" style="min-width: 55px; max-width: 55px; text-align: center;">KD</span>';
+    html += '<span class="header-item name" style="text-align: center;">Name</span>';
+    html += '<span class="header-item" style="min-width: 55px; max-width: 55px; text-align: center;">WR</span>';
+    html += '<span class="header-item" style="min-width: 65px; max-width: 65px; text-align: center;">Power</span>';
+    html += '</div>';;
+
     for (let i = 0; i < players.length; i++) {
         const player = players[i];
         const displayName = truncateNameWithFormat(player.name);
@@ -9735,11 +9744,11 @@ async function showTeamRoster(teamName) {
         }
 
         html += '<div class="roster-row compact' + mvpClass + '" title="' + escapeHtml(player.name) + '">';
-        html += '<span class="roster-kingdom-bracket">[' + kingdom + ']</span>';
+        html += '<span class="roster-mvp-bracket" style="min-width: 50px; max-width: 50px;">' + mvpDisplayHtml + '</span>';
+        html += '<span class="roster-kingdom-bracket" style="min-width: 55px; max-width: 55px; text-align: center;">[' + kingdom + ']</span>';
         html += '<span class="roster-name-bracket">' + displayName + '</span>';
         html += winrateHtml;
-        html += '<span class="roster-power-bracket">' + power + '</span>';
-        html += '<span class="roster-mvp-bracket">' + mvpDisplayHtml + '</span>';
+        html += '<span class="roster-power-bracket" style="min-width: 65px; max-width: 65px;">' + power + '</span>';
         html += '</div>';
         html += '\n';
     }
@@ -9766,10 +9775,8 @@ async function showTeamRoster(teamName) {
 // ==================== СРАВНЕНИЕ СОСТАВОВ КОМАНД В МАТЧЕ ====================
 
 async function showMatchComparison(team1Name, team2Name) {
-    // Используем глобальные ростеры
     let rosters = window._rosters;
 
-    // Если нет — загружаем
     if (!rosters) {
         rosters = await loadTeamRosters();
     }
@@ -9783,18 +9790,9 @@ async function showMatchComparison(team1Name, team2Name) {
     const team1Power = getTeamTotalPower(team1Name);
     const team2Power = getTeamTotalPower(team2Name);
 
-    const truncateName = (name) => {
-        if (name.length > 18) {
-            return name.substring(0, 16) + '..';
-        }
-        return name;
-    };
-
     let html = '<div id="match-compare-modal" class="match-compare-modal">';
     html += '<button class="match-compare-close">&times;</button>';
     html += '<div class="match-compare-content">';
-
-    // ТЕЛО СРАВНЕНИЯ
     html += '<div class="match-compare-body">';
 
     // ==================== КОМАНДА 1 (СЛЕВА) ====================
@@ -9819,6 +9817,15 @@ async function showMatchComparison(team1Name, team2Name) {
     html += '</div>';
     html += '<div class="match-compare-list">';
 
+    // ========== ЗАГОЛОВОК ЛЕВОЙ КОМАНДЫ ==========
+    html += '<div class="match-compare-header">';
+    html += '<span class="header-item" style="min-width: 55px; max-width: 55px;">MVP</span>';
+    html += '<span class="header-item" style="min-width: 55px; max-width: 55px;">KD</span>';
+    html += '<span class="header-item name">Name</span>';
+    html += '<span class="header-item" style="min-width: 55px; max-width: 55px;">WR</span>';
+    html += '<span class="header-item" style="min-width: 70px; max-width: 70px;">Power</span>';
+    html += '</div>';
+
     for (let i = 0; i < team1Players.length; i++) {
         const player = team1Players[i];
         const displayName = formatPlayerName(player.name);
@@ -9842,12 +9849,12 @@ async function showMatchComparison(team1Name, team2Name) {
             }
         }
 
-        html += '<div class="match-compare-row' + mvpClass + '" title="' + escapeHtml(player.name) + '">';
-        html += '<span class="match-compare-mvp">' + mvpDisplayHtml + '</span>';
-        html += '<span class="match-compare-kingdom">[' + kingdom + ']</span>';
+        html += '<div class="match-compare-row' + mvpClass + ' winrate-gradient" title="' + escapeHtml(player.name) + '">';
+        html += '<span class="match-compare-mvp" style="min-width: 55px; max-width: 55px;">' + mvpDisplayHtml + '</span>';
+        html += '<span class="match-compare-kingdom" style="min-width: 55px; max-width: 55px;">[' + kingdom + ']</span>';
         html += '<span class="match-compare-name">' + displayName + '</span>';
         html += winrateHtml;
-        html += '<span class="match-compare-power-val">' + power + '</span>';
+        html += '<span class="match-compare-power-val" style="min-width: 70px; max-width: 70px;">' + power + '</span>';
         html += '</div>';
         html += '\n';
     }
@@ -9885,6 +9892,15 @@ async function showMatchComparison(team1Name, team2Name) {
     html += '</div>';
     html += '<div class="match-compare-list">';
 
+    // ========== ЗАГОЛОВОК ПРАВОЙ КОМАНДЫ ==========
+    html += '<div class="match-compare-header">';
+    html += '<span class="header-item" style="min-width: 70px; max-width: 70px;">Power</span>';
+    html += '<span class="header-item" style="min-width: 55px; max-width: 55px;">WR</span>';
+    html += '<span class="header-item name">Name</span>';
+    html += '<span class="header-item" style="min-width: 55px; max-width: 55px;">KD</span>';
+    html += '<span class="header-item" style="min-width: 55px; max-width: 55px;">MVP</span>';
+    html += '</div>';
+
     for (let i = 0; i < team2Players.length; i++) {
         const player = team2Players[i];
         const displayName = formatPlayerName(player.name);
@@ -9908,12 +9924,12 @@ async function showMatchComparison(team1Name, team2Name) {
             }
         }
 
-        html += '<div class="match-compare-row' + mvpClass + '" title="' + escapeHtml(player.name) + '">';
-        html += '<span class="match-compare-power-val">' + power + '</span>';
+        html += '<div class="match-compare-row' + mvpClass + ' winrate-gradient" title="' + escapeHtml(player.name) + '">';
+        html += '<span class="match-compare-power-val" style="min-width: 70px; max-width: 70px;">' + power + '</span>';
         html += winrateHtml;
         html += '<span class="match-compare-name">' + displayName + '</span>';
-        html += '<span class="match-compare-kingdom">[' + kingdom + ']</span>';
-        html += '<span class="match-compare-mvp">' + mvpDisplayHtml + '</span>';
+        html += '<span class="match-compare-kingdom" style="min-width: 55px; max-width: 55px;">[' + kingdom + ']</span>';
+        html += '<span class="match-compare-mvp" style="min-width: 55px; max-width: 55px;">' + mvpDisplayHtml + '</span>';
         html += '</div>';
         html += '\n';
     }
@@ -9937,7 +9953,6 @@ async function showMatchComparison(team1Name, team2Name) {
     const closeBtn = modal.querySelector('.match-compare-close');
     const content = modal.querySelector('.match-compare-content');
 
-    // Закрытие по крестику
     if (closeBtn) {
         closeBtn.onclick = function(e) {
             e.stopPropagation();
@@ -9945,14 +9960,12 @@ async function showMatchComparison(team1Name, team2Name) {
         };
     }
 
-    // Закрытие по клику вне контента
     modal.onclick = function(e) {
         if (e.target === modal) {
             modal.remove();
         }
     };
 
-    // Предотвращаем закрытие при клике на контент
     if (content) {
         content.onclick = function(e) {
             e.stopPropagation();

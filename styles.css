@@ -3703,7 +3703,7 @@ footer {
     border-bottom: 1px solid rgba(42, 42, 42, 0.5);
     font-size: 0.85rem;
     transition: all 0.2s ease;
-    gap: 4px;
+    gap: 6px;
     min-width: 0;  /* ← добавляем */
     overflow: hidden;  /* ← добавляем */
 }
@@ -3713,9 +3713,10 @@ footer {
 .roster-kingdom-bracket {
     color: #888888;
     font-size: 0.95rem;
+    font-weight: 700;
     min-width: 55px;
     max-width: 55px;  /* ← добавляем */
-    text-align: right;
+    text-align: center;
     margin-right: 6px;
     flex-shrink: 0;
 }
@@ -3962,6 +3963,7 @@ footer {
 .match-compare-kingdom {
     color: #888888;
     font-size: 0.85rem;
+    font-weight: 700;
     min-width: 55px;
     text-align: center;
     flex-shrink: 0;
@@ -4170,6 +4172,61 @@ footer {
     margin: 0 2px;
     position: relative;
     top: -1px;  /* небольшая корректировка для центровки */
+}
+
+/* ==================== ЗАГОЛОВКИ ТАБЛИЦ ==================== */
+.roster-table-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.3rem 0.5rem;
+    background: rgba(204, 170, 102, 0.08);
+    border-bottom: 1px solid rgba(204, 170, 102, 0.2);
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #888888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    gap: 4px;
+}
+
+.roster-table-header .header-item {
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.roster-table-header .header-item.name {
+    flex: 1;
+    text-align: center;
+    min-width: 0;
+}
+
+/* Заголовки сравнения */
+.match-compare-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.3rem 0.5rem;
+    margin-bottom: 0.3rem;
+    background: rgba(204, 170, 102, 0.06);
+    border-bottom: 1px solid rgba(204, 170, 102, 0.15);
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: #888888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    gap: 6px;
+}
+
+.match-compare-header .header-item {
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.match-compare-header .header-item.name {
+    flex: 1;
+    text-align: center;
+    min-width: 0;
 }
 
 /* ==================== УПРАВЛЕНИЕ MVP ==================== */
