@@ -1148,8 +1148,8 @@ footer {
 /* ===== ТОЧКИ ===== */
 .live-dot {
     display: inline-block !important;
-    width: 5px !important;
-    height: 5px !important;
+    width: 6px !important;
+    height: 6px !important;
     border-radius: 50% !important;
     flex-shrink: 0 !important;
     transition: all 0.3s ease;
