@@ -1075,10 +1075,10 @@ footer {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 4px !important;              /* ← уменьшил отступ между точкой и текстом */
-    padding: 0.1rem 0.5rem !important; /* ← уменьшил padding */
+    gap: 4px !important;
+    padding: 0.1rem 0.5rem !important;
     border-radius: 4px !important;
-    font-size: 0.65rem !important;    /* ← оставил как было */
+    font-size: 0.65rem !important;
     font-weight: bold !important;
     text-transform: uppercase !important;
     text-decoration: none !important;
@@ -1086,11 +1086,11 @@ footer {
     transition: all 0.2s ease;
     line-height: 1;
     vertical-align: middle;
-    min-height: 22px;                 /* ← уменьшил минимальную высоту */
+    min-height: 22px;
     height: auto !important;
 }
 
-/* LIVE — прямой эфир */
+/* 1. LIVE — прямой эфир */
 .match-live-btn,
 .live-btn.match-live-btn {
     background: linear-gradient(135deg, #cc3333, #ff4444, #cc3333) !important;
@@ -1109,7 +1109,7 @@ footer {
     100% { background-position: 0% 50%; }
 }
 
-/* Запись доступна */
+/* 2. Запись доступна */
 .match-live-btn-finished,
 .live-btn.match-live-btn-finished {
     background: #2a2a2a !important;
@@ -1121,7 +1121,7 @@ footer {
     color: #888888 !important;
 }
 
-/* Скоро LIVE */
+/* 3. Скоро LIVE */
 .match-live-btn-dimmed,
 .live-btn.match-live-btn-dimmed {
     background: #5a2a2a !important;
@@ -1131,6 +1131,18 @@ footer {
 .live-btn.match-live-btn-dimmed:hover {
     background: #6a3a3a !important;
     color: #ccaaaa !important;
+}
+
+/* 4. Нет трансляции (добавляется класс no-stream) */
+.match-live-btn-finished.no-stream,
+.live-btn.match-live-btn-finished.no-stream {
+    background: #2a2a2a !important;
+    color: #666666 !important;
+}
+.match-live-btn-finished.no-stream:hover,
+.live-btn.match-live-btn-finished.no-stream:hover {
+    background: #3a3a3a !important;
+    color: #888888 !important;
 }
 
 /* ===== ТОЧКИ ===== */
@@ -1145,7 +1157,7 @@ footer {
     padding: 0 !important;
 }
 
-/* Белая точка — LIVE (во время стрима) */
+/* 1. Белая точка — LIVE (во время стрима) */
 .match-live-btn .live-dot,
 .live-btn.match-live-btn .live-dot {
     background: #ffffff !important;
@@ -1153,7 +1165,7 @@ footer {
     animation: liveDotPulse 1.5s ease-in-out infinite !important;
 }
 
-/* Красная точка — запись доступна */
+/* 2. Красная точка — запись доступна */
 .match-live-btn-finished .live-dot,
 .live-btn.match-live-btn-finished .live-dot {
     background: #cc3333 !important;
@@ -1161,7 +1173,7 @@ footer {
     animation: none !important;
 }
 
-/* Тусклая точка — скоро LIVE */
+/* 3. Тусклая точка — скоро LIVE */
 .match-live-btn-dimmed .live-dot,
 .live-btn.match-live-btn-dimmed .live-dot {
     background: #aa4444 !important;
@@ -1169,7 +1181,7 @@ footer {
     animation: liveDotPulse 2s ease-in-out infinite !important;
 }
 
-/* Серая точка — нет трансляции */
+/* 4. Серая точка — нет трансляции */
 .match-live-btn-finished.no-stream .live-dot,
 .live-btn.match-live-btn-finished.no-stream .live-dot {
     background: #555555 !important;
@@ -1186,19 +1198,6 @@ footer {
         opacity: 0.5;
         transform: scale(0.85);
     }
-}
-
-/* ===== СТАРЫЕ СТИЛИ ДЛЯ СОВМЕСТИМОСТИ ===== */
-.match-live-btn-finished .live-dot,
-.match-live-btn .live-dot,
-.match-live-btn-dimmed .live-dot {
-    display: inline-block !important;
-    width: 8px !important;
-    height: 8px !important;
-    border-radius: 50% !important;
-    flex-shrink: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
 }
 
 /* ==================== АВАТАРЫ ==================== */
@@ -3618,7 +3617,7 @@ footer {
     border-radius: 12px;
     width: 90%;
     max-width: 420px;
-    max-height: 85vh;
+    max-height: 95vh;
     display: flex;
     flex-direction: column;
     animation: modalFadeIn 0.3s ease;
@@ -3821,7 +3820,7 @@ footer {
     border: none;
     width: 90%;
     max-width: 1000px;
-    max-height: 85vh;
+    max-height: 95vh;
     display: flex;
     flex-direction: column;
     position: relative;
@@ -3841,7 +3840,7 @@ footer {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-    max-height: calc(85vh - 20px);
+    max-height: calc(95vh - 20px);
     scrollbar-width: thin;
     scrollbar-color: #ccaa66 #1a1a1a;
 }
@@ -4369,6 +4368,24 @@ footer {
 .mvp-manager-footer .btn-secondary { flex: 1; }
 
 /* ==================== АДАПТИВНОСТЬ ==================== */
+/* Планшеты и маленькие ноутбуки (до 1199px) */
+@media (max-width: 1199px) {
+    .groups-container { flex-direction: column; }
+    .playoffs-container { flex-direction: column; }
+    .draw-actions { flex-direction: column; align-items: stretch; }
+    .draw-buttons-left,
+    .draw-buttons-right { justify-content: center; }
+    .teams-input { grid-template-columns: 1fr; }
+    .schedule-edit-grid { grid-template-columns: 1fr; }
+    .prediction-rankings-container { flex-direction: column; align-items: center; }
+    .prediction-rank-table { width: 100%; max-width: 500px; }
+    .group-card { min-width: 100%; }
+    .match-team-name,
+    .playoff-team-name {
+        max-width: 100px;
+    }
+}
+
 /* Общие медиа-запросы */
 @media (max-width: 1000px) {
     .groups-container { flex-direction: column; }
