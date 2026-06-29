@@ -3691,8 +3691,8 @@ footer {
     border: none;
     border-radius: 12px;
     width: 90%;
-    max-width: 420px;
-    max-height: 95vh;
+    max-width: 450px;
+    max-height: 90vh;
     display: flex;
     flex-direction: column;
     animation: modalFadeIn 0.3s ease;
@@ -3755,12 +3755,12 @@ footer {
     overflow-y: auto;
     flex: 1;
     padding: 0.25rem 0;
-    scrollbar-width: thin;
-    scrollbar-color: #ccaa66 #1a1a1a;
+    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;  /* IE/Edge */
 }
-.roster-table-container.compact::-webkit-scrollbar { width: 4px; }
-.roster-table-container.compact::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 4px; }
-.roster-table-container.compact::-webkit-scrollbar-thumb { background: #ccaa66; border-radius: 4px; }
+.roster-table-container.compact::-webkit-scrollbar {
+    display: none;  /* Chrome/Safari */
+}
 
 .roster-list.compact {
     display: flex;
@@ -3778,8 +3778,8 @@ footer {
     font-size: 0.85rem;
     transition: all 0.2s ease;
     gap: 6px;
-    min-width: 0;  /* ← добавляем */
-    overflow: hidden;  /* ← добавляем */
+    min-width: 0;
+    overflow: hidden;
 }
 .roster-row.compact:last-child { border-bottom: none; }
 .roster-row.compact:hover { background: rgba(204, 170, 102, 0.08); border-radius: 8px; }
@@ -3789,7 +3789,7 @@ footer {
     font-size: 0.95rem;
     font-weight: 700;
     min-width: 55px;
-    max-width: 55px;  /* ← добавляем */
+    max-width: 55px;
     text-align: center;
     margin-right: 6px;
     flex-shrink: 0;
@@ -3798,21 +3798,21 @@ footer {
     color: #e8e8e8;
     font-weight: 700;
     font-size: 0.85rem;
-    min-width: 100px;  /* ← уменьшили с 150px */
+    min-width: 100px;
     text-align: left;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     text-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
-    flex: 1;  /* ← добавляем */
-    flex-shrink: 1;  /* ← добавляем */
+    flex: 1;
+    flex-shrink: 1;
 }
 .roster-power-bracket {
     color: #ccaa66;
     font-weight: 700;
     font-size: 0.85rem;
-    min-width: 65px;  /* ← уменьшили с 75px */
-    max-width: 65px;  /* ← добавляем */
+    min-width: 65px;
+    max-width: 65px;
     text-align: center;
     padding: 0.2rem 0.3rem;
     background: rgba(26, 90, 90, 0.2);
@@ -3895,7 +3895,7 @@ footer {
     border: none;
     width: 90%;
     max-width: 1000px;
-    max-height: 95vh;
+    max-height: 90vh;
     display: flex;
     flex-direction: column;
     position: relative;
@@ -3915,13 +3915,13 @@ footer {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-    max-height: calc(95vh - 20px);
-    scrollbar-width: thin;
-    scrollbar-color: #ccaa66 #1a1a1a;
+    max-height: calc(90vh - 100px);
+    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;  /* IE/Edge */
 }
-.match-compare-team::-webkit-scrollbar { width: 4px; }
-.match-compare-team::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 4px; }
-.match-compare-team::-webkit-scrollbar-thumb { background: #ccaa66; border-radius: 4px; }
+.match-compare-team::-webkit-scrollbar {
+    display: none;  /* Chrome/Safari */
+}
 
 .match-compare-team-header {
     display: flex;
