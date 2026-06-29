@@ -10692,11 +10692,31 @@ async function openMVPManager() {
 function initFundSupport() {
     const link = document.getElementById('fund-support-link-schedule');
     if (link) {
+        // Левая кнопка
         link.addEventListener('click', function(e) {
             e.preventDefault();
             playSound('click');
             window.open('https://dalink.to/kraken_khronicles', '_blank');
         });
+
+        // Средняя кнопка (колесико)
+        link.addEventListener('mousedown', function(e) {
+            if (e.button === 1) { // 1 = средняя кнопка
+                e.preventDefault();
+                playSound('click');
+                window.open('https://dalink.to/kraken_khronicles', '_blank');
+            }
+        });
+
+        const donationLink = document.querySelector('.donation-link');
+        if (donationLink) {
+            donationLink.addEventListener('mousedown', function(e) {
+                if (e.button === 1) {
+                    e.preventDefault();
+                    window.open(this.href, '_blank');
+                }
+            });
+        }
     }
 }
 
