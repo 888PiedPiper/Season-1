@@ -31,9 +31,9 @@ exports.default = gulp.parallel(minifyJS, minifyCSS);
 // Следим за изменениями
 exports.watch = function() {
     console.log('👀 Слежу за изменениями...');
-    console.log('📁 Изменяйте main.js или styles.css');
+    console.log('📁 Изменения main.js или styles.css');
     console.log('🔄 При сохранении файлы пересоберутся автоматически');
-    console.log('⏹ Нажмите Ctrl+C для остановки');
+    console.log('Ctrl+C для остановки');
     
     gulp.watch('js/main.js', minifyJS);
     gulp.watch('styles.css', minifyCSS);

@@ -2634,7 +2634,7 @@ function areBothGroupsCompleted() {
     return isGroupStageCompleted('A') && isGroupStageCompleted('B');
 }
 
-// ==================== BEST OF 3 ДЛЯ ГРАНД-ФИНАЛА ====================
+// ==================== BEST OF 2 ДЛЯ ГРАНД-ФИНАЛА ====================
 function calculateGrandFinalWinner(grandFinal) {
     if (!grandFinal) return '';
 
@@ -4953,7 +4953,7 @@ function renderPlayoffMatchCard(match, matchId, extraClass = '') {
         <div class="playoff-admin-controls">
             <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
                 ${isGrandFinal ? `
-                <!-- Best of 3 — детали матчей -->
+                <!-- Best of 2 — детали матчей -->
                 <div style="display: flex; flex-direction: column; gap: 4px; width: 100%; align-items: center;">
                     <!-- Матч 1 -->
                     <div style="display: flex; align-items: center; gap: 8px; justify-content: center; width: 100%; max-width: 400px;">

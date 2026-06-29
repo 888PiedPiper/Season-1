@@ -3030,7 +3030,7 @@ footer {
     transition: background 0.3s ease, border-radius 0.3s ease;
 }
 .arena-race-trigger:hover {
-    background: #2a2a2a;
+    background: #4d4d4d;
     border-radius: 0 30px 30px 0;
 }
 .arena-race-trigger::after {
@@ -3048,7 +3048,7 @@ footer {
 }
 .arena-race-trigger:hover::after { opacity: 1; }
 .arena-race-trigger:active {
-    background: #2a2a2a;
+    background: #4d4d4d;
     border-radius: 0 30px 30px 0;
 }
 .arena-race-trigger:active::after { opacity: 1; }
