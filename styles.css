@@ -1482,14 +1482,10 @@ footer {
     padding-left: 9px;
 }
 
-.playoff-winner {
-    text-align: center;
-    margin-top: 8px;
-    padding-top: 6px;
-    border-top: 1px solid #2a2a2a;
-    color: #6aaf6a;
-    font-size: 11px;
-    font-weight: bold;
+/* ===== ПОБЕДИТЕЛЬ В ПЛЕЙ-ОФФ (ЗЕЛЁНЫЙ) ===== */
+.playoff-winner-text {
+    color: #6aaf6a !important;
+    font-weight: 700;
 }
 
 .playoff-admin-controls {
@@ -1651,6 +1647,47 @@ footer {
 .playoff-bracket-header.active::after {
     bottom: 0;
     animation-direction: reverse;
+}
+
+/* ===== BEST OF 3 ===== */
+
+.best-of-3-label {
+    color: #ccaa66 !important;
+    font-size: 0.85rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 2px !important;
+    text-transform: uppercase !important;
+    text-shadow: 0 0 10px rgba(204, 170, 102, 0.3) !important;
+    text-align: center;
+    margin-bottom: 4px;
+}
+
+.best-of-3-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 6px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 6px;
+    align-items: center;
+    width: 100%;
+}
+
+.best-of-3-container .best-of-3-match:not(:last-child) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.best-of-3-container .best-of-3-match {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.best-of-3-container .team-avatar {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
 }
 
 /* ==================== РЕЗУЛЬТАТЫ ==================== */

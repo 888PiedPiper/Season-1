@@ -1,5 +1,5 @@
 // ==================== НАСТРОЙКИ ====================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyyee_qfXr_HhGooubcMbOjRukkXdnsIWzbzVb9uMYQLgQrirF-SRfYK6dW9jfRds48/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxOC2mKZqe1Wmifm0uB29V3dvn4tMaYDvHOiLSQQwBH--4l5O-pkNgme7HiqkFnPu4i/exec';
 const SHEET_ID = '1CeJjGHytehxVIxSxY_j_mx84EvGzKJNA5x9y9n-MSBs';
 const API_KEY = 'AIzaSyCB_5jPpU-GtKmmzx8FTTu33WtbNntxGvg';
 const TEAM_ROSTERS_URL = 'https://script.google.com/macros/s/AKfycbwQyOUSadRrBHhV9ijzvsvergxCJHs8Ntgrt2OuVZv7OZgnjI1Qy6ZvDh5ppJPNtxJjQw/exec';
@@ -2626,6 +2626,121 @@ function areBothGroupsCompleted() {
     return isGroupStageCompleted('A') && isGroupStageCompleted('B');
 }
 
+// ==================== BEST OF 3 ДЛЯ ГРАНД-ФИНАЛА ====================
+function calculateGrandFinalWinner(grandFinal) {
+    if (!grandFinal) return '';
+
+    // Проверяем, есть ли какие-либо данные о матчах
+    const m1s1 = grandFinal.match1Score1 || 0;
+    const m1s2 = grandFinal.match1Score2 || 0;
+    const m2s1 = grandFinal.match2Score1 || 0;
+    const m2s2 = grandFinal.match2Score2 || 0;
+    const m3s1 = grandFinal.match3Score1 || 0;
+    const m3s2 = grandFinal.match3Score2 || 0;
+
+    // Если все матчи пустые (все очки = 0) — сбрасываем победителя
+    const hasAnyData = (m1s1 > 0 || m1s2 > 0 || m2s1 > 0 || m2s2 > 0 || m3s1 > 0 || m3s2 > 0);
+
+    if (!hasAnyData) {
+        grandFinal.team1Score = 0;
+        grandFinal.team2Score = 0;
+        grandFinal.team1Points = 0;
+        grandFinal.team2Points = 0;
+        grandFinal.winner = '';
+        return '';
+    }
+
+    // Определяем победителя каждого матча по очкам
+    let wins1 = 0;
+    let wins2 = 0;
+
+    // Матч 1
+    if (m1s1 > 0 || m1s2 > 0) {
+        if (m1s1 > m1s2) wins1++;
+        else if (m1s2 > m1s1) wins2++;
+    }
+
+    // Матч 2
+    if (m2s1 > 0 || m2s2 > 0) {
+        if (m2s1 > m2s2) wins1++;
+        else if (m2s2 > m2s1) wins2++;
+    }
+
+    // Матч 3
+    if (m3s1 > 0 || m3s2 > 0) {
+        if (m3s1 > m3s2) wins1++;
+        else if (m3s2 > m3s1) wins2++;
+    }
+
+    // Обновляем общий счёт побед
+    grandFinal.team1Score = wins1;
+    grandFinal.team2Score = wins2;
+
+    // Суммируем очки за все матчи
+    grandFinal.team1Points = m1s1 + m2s1 + m3s1;
+    grandFinal.team2Points = m1s2 + m2s2 + m3s2;
+
+    // Определяем победителя (до двух побед)
+    if (wins1 >= 2) {
+        grandFinal.winner = grandFinal.team1;
+        return grandFinal.team1;
+    }
+    if (wins2 >= 2) {
+        grandFinal.winner = grandFinal.team2;
+        return grandFinal.team2;
+    }
+
+    // Если победитель ещё не определён (счёт 1:0, 0:1, 1:1) — сбрасываем
+    grandFinal.winner = '';
+    return '';
+}
+
+function isGrandFinalCompleted() {
+    const grandFinal = tournamentData.playoffs.grandFinal;
+    if (!grandFinal) return false;
+    const winner = calculateGrandFinalWinner(grandFinal);
+    return winner && winner !== '' && winner !== 'TBD';
+}
+
+function updateGrandFinal() {
+    const grandFinal = tournamentData.playoffs.grandFinal;
+    if (!grandFinal) return;
+
+    // Сбрасываем победителя, если нет данных
+    const m1s1 = grandFinal.match1Score1 || 0;
+    const m1s2 = grandFinal.match1Score2 || 0;
+    const m2s1 = grandFinal.match2Score1 || 0;
+    const m2s2 = grandFinal.match2Score2 || 0;
+    const m3s1 = grandFinal.match3Score1 || 0;
+    const m3s2 = grandFinal.match3Score2 || 0;
+
+    const hasAnyData = (m1s1 > 0 || m1s2 > 0 || m2s1 > 0 || m2s2 > 0 || m3s1 > 0 || m3s2 > 0);
+
+    if (!hasAnyData) {
+        grandFinal.team1Score = 0;
+        grandFinal.team2Score = 0;
+        grandFinal.team1Points = 0;
+        grandFinal.team2Points = 0;
+        grandFinal.winner = '';
+        return;
+    }
+
+    // Суммируем очки за все матчи
+    const total1 = m1s1 + m2s1 + m3s1;
+    const total2 = m1s2 + m2s2 + m3s2;
+
+    grandFinal.team1Points = total1;
+    grandFinal.team2Points = total2;
+
+    // Определяем победителя
+    const winner = calculateGrandFinalWinner(grandFinal);
+    if (winner) {
+        grandFinal.winner = winner;
+    } else {
+        grandFinal.winner = '';
+    }
+}
+
 // ==================== ПРИЗОВОЙ ФОНД ====================
 async function loadPrizes() {
     try {
@@ -3533,6 +3648,39 @@ async function loadTournamentData() {
     }
 }
 
+// ==================== ПОЛУЧЕНИЕ КОМАНД, ВЫШЕДШИХ В ПЛЕЙ-ОФФ ====================
+function getGroupWinnersList() {
+    const winners = [];
+    
+    // Получаем ТОП-2 команды из группы A
+    const groupAWinners = getGroupWinners(tournamentData.groups.A);
+    if (groupAWinners && groupAWinners.length > 0) {
+        // 1-е место
+        if (groupAWinners[0] && groupAWinners[0].name) {
+            winners.push(groupAWinners[0].name);
+        }
+        // 2-е место
+        if (groupAWinners[1] && groupAWinners[1].name) {
+            winners.push(groupAWinners[1].name);
+        }
+    }
+    
+    // Получаем ТОП-2 команды из группы B
+    const groupBWinners = getGroupWinners(tournamentData.groups.B);
+    if (groupBWinners && groupBWinners.length > 0) {
+        // 1-е место
+        if (groupBWinners[0] && groupBWinners[0].name) {
+            winners.push(groupBWinners[0].name);
+        }
+        // 2-е место
+        if (groupBWinners[1] && groupBWinners[1].name) {
+            winners.push(groupBWinners[1].name);
+        }
+    }
+    
+    return winners;
+}
+
 // ==================== ОБНОВЛЕНИЕ ПЛЕЙ-ОФФ ====================
 function getGroupWinners(group) {
     const teams = group.teams || [];
@@ -3750,6 +3898,8 @@ function updatePlayoffsBracket() {
     renderPlayoffs();
     renderResults();
     updatePlayoffAnimation();
+    // ========== АВТО-ОБНОВЛЕНИЕ ГРАНД-ФИНАЛА ==========
+    updateGrandFinal();    
 }
 
 // ==================== ИНИЦИАЛИЗАЦИЯ МАТЧЕЙ ГРУПП ====================
@@ -4223,7 +4373,7 @@ function renderMatchCard(group, match, idx) {
     const pulseAnimation = (isLiveNow && hasStreamUrl && !isCompleted) ? 'live-pulse' : '';
     
     const score1Class = safeMatch.score1 === 1 ? 'match-score-win' : 'match-score-loss';
-    const score2Class = safeMatch.score2 === 1 ? 'match-score-win' : 'match-score-loss';
+    const score2Class = safeMatch.score2 === 1 ? 'match-score-win' : 'match-score-loss'
     
     const team1AvatarHtml = (safeMatch.team1 && safeMatch.team1 !== 'TBD') ? getAvatarHtml(safeMatch.team1) : '';
     const team2AvatarHtml = (safeMatch.team2 && safeMatch.team2 !== 'TBD') ? getAvatarHtml(safeMatch.team2) : '';
@@ -4565,17 +4715,62 @@ function renderPlayoffMatchCard(match, matchId, extraClass = '') {
 
     const isCompleted = safeMatch.winner && safeMatch.winner !== '';
     
+    // ========== СУММА ДЛЯ ГРАНД-ФИНАЛА ==========
+    const isGrandFinal = matchId === 'grandFinal';
+    let sum1 = 0;
+    let sum2 = 0;
+    if (isGrandFinal) {
+        const m1s1 = match.match1Score1 || 0;
+        const m1s2 = match.match1Score2 || 0;
+        const m2s1 = match.match2Score1 || 0;
+        const m2s2 = match.match2Score2 || 0;
+        const m3s1 = match.match3Score1 || 0;
+        const m3s2 = match.match3Score2 || 0;
+        sum1 = (m1s1 || 0) + (m2s1 || 0) + (m3s1 || 0);
+        sum2 = (m1s2 || 0) + (m2s2 || 0) + (m3s2 || 0);
+    }
+
     const isWinner1 = safeMatch.winner === safeMatch.team1;
     const isWinner2 = safeMatch.winner === safeMatch.team2;
     const winnerClass1 = isWinner1 ? 'playoff-winner-text' : '';
     const winnerClass2 = isWinner2 ? 'playoff-winner-text' : '';
-    
+
     const isTBDTeam1 = safeMatch.team1 === 'TBD' || safeMatch.team1 === '';
     const isTBDTeam2 = safeMatch.team2 === 'TBD' || safeMatch.team2 === '';
-    
-    const score1Class = safeMatch.team1Score === 1 ? 'playoff-score-win' : 'playoff-score-loss';
-    const score2Class = safeMatch.team2Score === 1 ? 'playoff-score-win' : 'playoff-score-loss';
-    
+
+    // ========== ОПРЕДЕЛЕНИЕ ЦВЕТОВ СЧЁТА ==========
+    let score1Class = 'playoff-score-loss';
+    let score2Class = 'playoff-score-loss';
+
+    if (isGrandFinal) {
+        // Для гранд-финала — цвет зависит от победителя
+        if (safeMatch.winner && safeMatch.winner !== '') {
+            if (safeMatch.winner === safeMatch.team1) {
+                score1Class = 'playoff-score-win';
+                score2Class = 'playoff-score-loss';
+            } else if (safeMatch.winner === safeMatch.team2) {
+                score1Class = 'playoff-score-loss';
+                score2Class = 'playoff-score-win';
+            }
+        } else {
+            // Если победитель ещё не определён — оба серые
+            score1Class = 'playoff-score-loss';
+            score2Class = 'playoff-score-loss';
+        }
+    } else {
+        // Для обычных матчей — по счёту 1:0
+        if (safeMatch.team1Score === 1) {
+            score1Class = 'playoff-score-win';
+        } else {
+            score1Class = 'playoff-score-loss';
+        }
+        if (safeMatch.team2Score === 1) {
+            score2Class = 'playoff-score-win';
+        } else {
+            score2Class = 'playoff-score-loss';
+        }
+    }
+
     let effectiveDate = safeMatch.date;
     if (!effectiveDate && tempPlayoffDates[matchId]) {
         effectiveDate = tempPlayoffDates[matchId];
@@ -4586,17 +4781,17 @@ function renderPlayoffMatchCard(match, matchId, extraClass = '') {
         cleanDate = cleanDate.slice(0, -1);
     }
     const showDate = cleanDate && cleanDate !== '' ? formatDateDisplay(cleanDate) : t('date_not_set');
-    
+
     let effectiveStreamUrl = safeMatch.streamUrl;
     if (!effectiveStreamUrl && tempPlayoffStreamUrls[matchId]) {
         effectiveStreamUrl = tempPlayoffStreamUrls[matchId];
     }
     const hasStreamUrl = effectiveStreamUrl && effectiveStreamUrl !== '';
     const streamLink = hasStreamUrl ? effectiveStreamUrl : '#';
-    
+
     const liveStatus = getLiveStatus(effectiveDate, safeMatch.winner);
     const isLiveNow = liveStatus.isLive;
-    
+
     // ========== КНОПКА LIVE С ТОЧКОЙ ==========
     let liveBtnClass = '';
     let liveDotHtml = '<span class="live-dot"></span>';
@@ -4604,45 +4799,209 @@ function renderPlayoffMatchCard(match, matchId, extraClass = '') {
     // Проверяем, есть ли победитель (матч завершён)
     if (isCompleted) {
         liveBtnClass = 'match-live-btn-finished';
-    } 
+    }
     // Если матч ещё идёт и есть ссылка на стрим
     else if (isLiveNow && hasStreamUrl) {
         liveBtnClass = 'match-live-btn';
-    } 
+    }
     // Если есть ссылка на стрим, но матч ещё не начался
     else if (hasStreamUrl) {
         liveBtnClass = 'match-live-btn-dimmed';
-    } 
+    }
     // Нет ссылки на стрим
     else {
         liveBtnClass = 'match-live-btn-finished no-stream';
         liveDotHtml = '<span class="live-dot"></span>';
     }
-    
+
     // Анимация пульсации только для LIVE
     const pulseAnimation = (isLiveNow && hasStreamUrl && !isCompleted) ? 'live-pulse' : '';
     const vsAnimationClass = isLiveNow ? 'match-vs-live' : '';
-    
+
     const team1AvatarHtml = !isTBDTeam1 ? getAvatarHtml(safeMatch.team1) : '';
     const team2AvatarHtml = !isTBDTeam2 ? getAvatarHtml(safeMatch.team2) : '';
-    
+
+    // ========== BEST OF 3 ДЛЯ ГРАНД-ФИНАЛА ==========
+    let bestOf3Html = '';
+    if (isGrandFinal) {
+        const m1s1 = match.match1Score1 || 0;
+        const m1s2 = match.match1Score2 || 0;
+        const m2s1 = match.match2Score1 || 0;
+        const m2s2 = match.match2Score2 || 0;
+        const m3s1 = match.match3Score1 || 0;
+        const m3s2 = match.match3Score2 || 0;
+
+        // Определяем победителя КАЖДОГО матча (по очкам)
+        let m1Winner = '';
+        let m2Winner = '';
+        let m3Winner = '';
+
+        if (m1s1 > 0 || m1s2 > 0) {
+            m1Winner = m1s1 > m1s2 ? safeMatch.team1 : (m1s2 > m1s1 ? safeMatch.team2 : '');
+        }
+        if (m2s1 > 0 || m2s2 > 0) {
+            m2Winner = m2s1 > m2s2 ? safeMatch.team1 : (m2s2 > m2s1 ? safeMatch.team2 : '');
+        }
+        if (m3s1 > 0 || m3s2 > 0) {
+            m3Winner = m3s1 > m3s2 ? safeMatch.team1 : (m3s2 > m3s1 ? safeMatch.team2 : '');
+        }
+
+        // Функция для создания строки матча
+        function renderMatchLine(label, score1, score2, winner) {
+            const formattedScore1 = Number(score1).toLocaleString();
+            const formattedScore2 = Number(score2).toLocaleString();
+            
+            // Получаем данные победителя (если есть)
+            let winnerAvatar = '';
+            let winnerName = '';
+            if (winner && winner !== '') {
+                winnerAvatar = getAvatarHtml(winner);
+                winnerName = escapeHtml(winner);
+            }
+
+            // Проверяем, кто победил
+            const isTeam1Winner = winner === safeMatch.team1;
+            const isTeam2Winner = winner === safeMatch.team2;
+
+            // Формируем отображение победителя
+            let winnerLeft = '';
+            let winnerRight = '';
+            let emptySlot = '<span style="min-width: 70px;"></span>';
+
+            if (isTeam1Winner) {
+                // Победитель СЛЕВА
+                winnerLeft = `
+                    <span style="display: inline-flex; align-items: center; gap: 4px; color: #6aaf6a; font-weight: 600; font-size: 0.8rem; min-width: 70px; justify-content: flex-end;">
+                        ${winnerAvatar}
+                        <span>${winnerName}</span>
+                    </span>
+                `;
+                winnerRight = emptySlot;
+            } else if (isTeam2Winner) {
+                // Победитель СПРАВА
+                winnerLeft = emptySlot;
+                winnerRight = `
+                    <span style="display: inline-flex; align-items: center; gap: 4px; color: #6aaf6a; font-weight: 600; font-size: 0.8rem; min-width: 70px; justify-content: flex-start;">
+                        ${winnerAvatar}
+                        <span>${winnerName}</span>
+                    </span>
+                `;
+            } else {
+                // Нет победителя
+                winnerLeft = emptySlot;
+                winnerRight = emptySlot;
+            }
+
+            return `
+                <div class="best-of-3-match">
+                    <div style="text-align: center; color: #888888; font-size: 0.7rem; font-weight: 600; padding: 2px 0 1px 0; letter-spacing: 0.5px;">${label}</div>
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 2px 0;">
+                        ${winnerLeft}
+                        <span style="color: #ffffff; font-size: 0.9rem; font-weight: 600; min-width: 60px; text-align: center;">${formattedScore1}</span>
+                        <span style="color: #ccaa66; font-size: 1rem; font-weight: 700; min-width: 14px; text-align: center;">:</span>
+                        <span style="color: #ffffff; font-size: 0.9rem; font-weight: 600; min-width: 60px; text-align: center;">${formattedScore2}</span>
+                        ${winnerRight}
+                    </div>
+                </div>
+            `;
+        }
+
+        let matchesHtml = '';
+
+        // Матч 1
+        if (m1s1 > 0 || m1s2 > 0) {
+            matchesHtml += renderMatchLine('Матч 1', m1s1, m1s2, m1Winner);
+        }
+
+        // Матч 2
+        if (m2s1 > 0 || m2s2 > 0) {
+            matchesHtml += renderMatchLine('Матч 2', m2s1, m2s2, m2Winner);
+        }
+
+        // Матч 3
+        if (m3s1 > 0 || m3s2 > 0) {
+            matchesHtml += renderMatchLine('Матч 3', m3s1, m3s2, m3Winner);
+        }
+
+        if (matchesHtml) {
+            bestOf3Html = `
+                <div class="best-of-3-container">
+                    <div class="best-of-3-label">Best of 3</div>
+                    ${matchesHtml}
+                </div>
+            `;
+        } else {
+            bestOf3Html = `
+                <div style="text-align: center; font-size: 0.65rem; color: #888888; margin-top: 4px;">Best of 3</div>
+            `;
+        }
+    }
+
+    // ========== АДМИН-КОНТРОЛЫ ==========
     const adminControls = isAdmin ? `
         <div class="playoff-admin-controls">
-            <input type="number" id="${matchId}_score1" class="playoff-score-input" value="${safeMatch.team1Score}" min="0" max="1" step="1" placeholder="${t('admin_score1')}">
-            <span style="color: #ccaa66;">:</span>
-            <input type="number" id="${matchId}_score2" class="playoff-score-input" value="${safeMatch.team2Score}" min="0" max="1" step="1" placeholder="${t('admin_score2')}">
-            <input type="number" id="${matchId}_points1" class="playoff-points-input" value="${safeMatch.team1Points}" min="0" max="100000" step="1" placeholder="${t('admin_points1')}">
-            <span style="color: #ccaa66;">:</span>
-            <input type="number" id="${matchId}_points2" class="playoff-points-input" value="${safeMatch.team2Points}" min="0" max="100000" step="1" placeholder="${t('admin_points2')}">
-            <input type="datetime-local" id="${matchId}_date" class="match-date-input" value="${formatDateForInput(effectiveDate)}" style="width: 160px;">
-            <input type="text" id="${matchId}_streamUrl" class="match-stream-input" placeholder="${t('admin_live_url')}" value="${escapeHtml(effectiveStreamUrl)}" style="width: 120px;">
-            <button id="update-${matchId}" class="playoff-update-btn" style="min-width: 120px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">✓ ${t('admin_save')}</button>
+            <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
+                ${isGrandFinal ? `
+                <!-- Best of 3 — детали матчей -->
+                <div style="display: flex; flex-direction: column; gap: 4px; width: 100%; align-items: center;">
+                    <!-- Матч 1 -->
+                    <div style="display: flex; align-items: center; gap: 8px; justify-content: center; width: 100%; max-width: 400px;">
+                        <span style="color: #888888; font-size: 0.55rem; min-width: 80px; text-align: right;">Матч 1 очки:</span>
+                        <input type="number" id="${matchId}_m1s1" class="playoff-score-input" value="${match.match1Score1 || 0}" min="0" step="1" style="width: 70px; font-size: 0.8rem; text-align: center;">
+                        <span style="color: #ccaa66; font-size: 0.9rem; font-weight: 700; min-width: 16px; text-align: center;">:</span>
+                        <input type="number" id="${matchId}_m1s2" class="playoff-score-input" value="${match.match1Score2 || 0}" min="0" step="1" style="width: 70px; font-size: 0.8rem; text-align: center;">
+                    </div>
+                    <!-- Матч 2 -->
+                    <div style="display: flex; align-items: center; gap: 8px; justify-content: center; width: 100%; max-width: 400px;">
+                        <span style="color: #888888; font-size: 0.55rem; min-width: 80px; text-align: right;">Матч 2 очки:</span>
+                        <input type="number" id="${matchId}_m2s1" class="playoff-score-input" value="${match.match2Score1 || 0}" min="0" step="1" style="width: 70px; font-size: 0.8rem; text-align: center;">
+                        <span style="color: #ccaa66; font-size: 0.9rem; font-weight: 700; min-width: 16px; text-align: center;">:</span>
+                        <input type="number" id="${matchId}_m2s2" class="playoff-score-input" value="${match.match2Score2 || 0}" min="0" step="1" style="width: 70px; font-size: 0.8rem; text-align: center;">
+                    </div>
+                    <!-- Матч 3 -->
+                    <div style="display: flex; align-items: center; gap: 8px; justify-content: center; width: 100%; max-width: 400px;">
+                        <span style="color: #888888; font-size: 0.55rem; min-width: 80px; text-align: right;">Матч 3 очки:</span>
+                        <input type="number" id="${matchId}_m3s1" class="playoff-score-input" value="${match.match3Score1 || 0}" min="0" step="1" style="width: 70px; font-size: 0.8rem; text-align: center;">
+                        <span style="color: #ccaa66; font-size: 0.9rem; font-weight: 700; min-width: 16px; text-align: center;">:</span>
+                        <input type="number" id="${matchId}_m3s2" class="playoff-score-input" value="${match.match3Score2 || 0}" min="0" step="1" style="width: 70px; font-size: 0.8rem; text-align: center;">
+                    </div>
+                    <!-- Сумма очков (автоматический расчёт) -->
+                    <div style="display: flex; align-items: center; gap: 8px; justify-content: center; border-top: 1px solid #2a2a2a; padding-top: 8px; margin-top: 4px; width: 100%; max-width: 400px;">
+                        <span style="color: #ccaa66; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.5px; min-width: 80px; text-align: right;">Сумма очков:</span>
+                        <span style="color: #ccaa66; font-weight: 700; font-size: 0.9rem; min-width: 70px; text-align: center;" id="${matchId}_sum1_display">${(match.match1Score1 || 0) + (match.match2Score1 || 0) + (match.match3Score1 || 0)}</span>
+                        <span style="color: #ccaa66; font-size: 0.9rem; font-weight: 700; min-width: 16px; text-align: center;">:</span>
+                        <span style="color: #ccaa66; font-weight: 700; font-size: 0.9rem; min-width: 70px; text-align: center;" id="${matchId}_sum2_display">${(match.match1Score2 || 0) + (match.match2Score2 || 0) + (match.match3Score2 || 0)}</span>
+                    </div>
+                </div>
+                ` : `
+                <!-- Обычный матч -->
+                <div style="display: flex; flex-direction: column; gap: 4px; width: 100%; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px; justify-content: center; width: 100%; max-width: 320px;">
+                        <span style="color: #888888; font-size: 0.5rem; min-width: 40px; text-align: right;">Счёт:</span>
+                        <input type="number" id="${matchId}_score1" class="playoff-score-input" value="${safeMatch.team1Score}" min="0" max="1" step="1" placeholder="Счет 1" style="width: 50px; font-size: 0.8rem; text-align: center;">
+                        <span style="color: #ccaa66; font-size: 0.9rem; font-weight: 700; min-width: 16px; text-align: center;">:</span>
+                        <input type="number" id="${matchId}_score2" class="playoff-score-input" value="${safeMatch.team2Score}" min="0" max="1" step="1" placeholder="Счет 2" style="width: 50px; font-size: 0.8rem; text-align: center;">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; justify-content: center; width: 100%; max-width: 320px;">
+                        <span style="color: #888888; font-size: 0.5rem; min-width: 40px; text-align: right;">Очки:</span>
+                        <input type="number" id="${matchId}_points1" class="playoff-points-input" value="${safeMatch.team1Points}" min="0" max="100000" step="1" placeholder="Очки 1" style="width: 70px; font-size: 0.8rem; text-align: center;">
+                        <span style="color: #ccaa66; font-size: 0.9rem; font-weight: 700; min-width: 16px; text-align: center;">:</span>
+                        <input type="number" id="${matchId}_points2" class="playoff-points-input" value="${safeMatch.team2Points}" min="0" max="100000" step="1" placeholder="Очки 2" style="width: 70px; font-size: 0.8rem; text-align: center;">
+                    </div>
+                </div>
+                `}
+                <!-- Общие поля (дата и ссылка) -->
+                <div style="display: flex; align-items: center; gap: 6px; justify-content: center; flex-wrap: wrap; width: 100%;">
+                    <input type="datetime-local" id="${matchId}_date" class="match-date-input" value="${formatDateForInput(effectiveDate)}" style="width: 160px;">
+                    <input type="text" id="${matchId}_streamUrl" class="match-stream-input" placeholder="${t('admin_live_url')}" value="${escapeHtml(effectiveStreamUrl)}" style="width: 120px;">
+                </div>
+                <button id="update-${matchId}" class="playoff-update-btn" style="min-width: 120px; height: 32px; display: inline-flex; align-items: center; justify-content: center; margin: 4px auto 0;">✓ ${t('admin_save')}</button>
+            </div>
         </div>
     ` : '';
-    
-    const winnerHtml = (safeMatch.winner && !isTBDTeam1 && !isTBDTeam2) ? 
-        `<div class="playoff-winner">${t('admin_winner')} ${escapeHtml(safeMatch.winner)}</div>` : '';
-    
+
+    const winnerHtml = '';
+
     return `
         <div class="playoff-match-card ${extraClass} ${isCompleted ? 'completed' : ''}" data-team1="${escapeHtml(safeMatch.team1)}" data-team2="${escapeHtml(safeMatch.team2)}">
             <div class="match-header">
@@ -4655,11 +5014,11 @@ function renderPlayoffMatchCard(match, matchId, extraClass = '') {
                 <div class="playoff-teams-row">
                     <div class="playoff-team playoff-team-left ${winnerClass1}">
                         ${team1AvatarHtml}
-                        <span class="playoff-team-name ${isTBDTeam1 ? 'tbd-team' : ''}" style="cursor: pointer;" data-team-name="${escapeHtml(safeMatch.team1)}">${escapeHtml(safeMatch.team1)}</span>
+                        <span class="playoff-team-name ${isTBDTeam1 ? 'tbd-team' : ''} ${isWinner1 ? 'playoff-winner-text' : ''}" style="cursor: pointer;" data-team-name="${escapeHtml(safeMatch.team1)}">${escapeHtml(safeMatch.team1)}</span>
                     </div>
                     <div class="playoff-vs ${vsAnimationClass}">${t('vs')}</div>
                     <div class="playoff-team playoff-team-right ${winnerClass2}">
-                        <span class="playoff-team-name ${isTBDTeam2 ? 'tbd-team' : ''}" style="cursor: pointer;" data-team-name="${escapeHtml(safeMatch.team2)}">${escapeHtml(safeMatch.team2)}</span>
+                        <span class="playoff-team-name ${isTBDTeam2 ? 'tbd-team' : ''} ${isWinner2 ? 'playoff-winner-text' : ''}" style="cursor: pointer;" data-team-name="${escapeHtml(safeMatch.team2)}">${escapeHtml(safeMatch.team2)}</span>
                         ${team2AvatarHtml}
                     </div>
                 </div>
@@ -4668,11 +5027,20 @@ function renderPlayoffMatchCard(match, matchId, extraClass = '') {
                     <span class="playoff-score-divider">:</span>
                     <span class="playoff-score-right ${score2Class}">${safeMatch.team2Score}</span>
                 </div>
+                ${!isGrandFinal ? `
                 <div class="playoff-points-row">
                     <span class="playoff-points-left">${safeMatch.team1Points.toLocaleString()}</span>
                     <span class="playoff-points-divider">:</span>
                     <span class="playoff-points-right">${safeMatch.team2Points.toLocaleString()}</span>
                 </div>
+                ` : `
+                <div class="playoff-points-row">
+                    <span class="playoff-points-left" style="color: #ccaa66; font-size: 0.9rem; font-weight: 700;">${sum1.toLocaleString()}</span>
+                    <span class="playoff-points-divider" style="color: #ccaa66; font-size: 1rem; font-weight: 700;">:</span>
+                    <span class="playoff-points-right" style="color: #ccaa66; font-size: 0.9rem; font-weight: 700;">${sum2.toLocaleString()}</span>
+                </div>
+                `}
+                ${bestOf3Html}
                 ${winnerHtml}
                 ${adminControls}
             </div>
@@ -4739,20 +5107,112 @@ function handlePlayoffUpdate(matchId) {
         };
     }
 
-    if (score1Input && score2Input) {
-        let score1 = parseInt(score1Input.value) || 0;
-        let score2 = parseInt(score2Input.value) || 0;
-        score1 = Math.min(score1, 1);
-        score2 = Math.min(score2, 1);
-        tournamentData.playoffs[matchId].team1Score = score1;
-        tournamentData.playoffs[matchId].team2Score = score2;
+    // ========== ДЛЯ ГРАНД-ФИНАЛА — ЧИТАЕМ ТОЛЬКО ОЧКИ ==========
+    if (matchId === 'grandFinal') {
+        const m1s1 = document.getElementById(`${matchId}_m1s1`);
+        const m1s2 = document.getElementById(`${matchId}_m1s2`);
+        const m2s1 = document.getElementById(`${matchId}_m2s1`);
+        const m2s2 = document.getElementById(`${matchId}_m2s2`);
+        const m3s1 = document.getElementById(`${matchId}_m3s1`);
+        const m3s2 = document.getElementById(`${matchId}_m3s2`);
+
+        if (m1s1) tournamentData.playoffs[matchId].match1Score1 = parseInt(m1s1.value) || 0;
+        if (m1s2) tournamentData.playoffs[matchId].match1Score2 = parseInt(m1s2.value) || 0;
+        if (m2s1) tournamentData.playoffs[matchId].match2Score1 = parseInt(m2s1.value) || 0;
+        if (m2s2) tournamentData.playoffs[matchId].match2Score2 = parseInt(m2s2.value) || 0;
+        if (m3s1) tournamentData.playoffs[matchId].match3Score1 = parseInt(m3s1.value) || 0;
+        if (m3s2) tournamentData.playoffs[matchId].match3Score2 = parseInt(m3s2.value) || 0;
+
+        // Суммируем очки
+        const total1 = (tournamentData.playoffs[matchId].match1Score1 || 0) +
+                       (tournamentData.playoffs[matchId].match2Score1 || 0) +
+                       (tournamentData.playoffs[matchId].match3Score1 || 0);
+        const total2 = (tournamentData.playoffs[matchId].match1Score2 || 0) +
+                       (tournamentData.playoffs[matchId].match2Score2 || 0) +
+                       (tournamentData.playoffs[matchId].match3Score2 || 0);
+
+        tournamentData.playoffs[matchId].team1Points = total1;
+        tournamentData.playoffs[matchId].team2Points = total2;
+
+        // Автоматический расчёт победителя
+        const winner = calculateGrandFinalWinner(tournamentData.playoffs[matchId]);
+        if (winner) {
+            tournamentData.playoffs[matchId].winner = winner;
+        } else {
+            tournamentData.playoffs[matchId].winner = '';
+        }
     }
 
-    if (points1Input && points2Input) {
-        tournamentData.playoffs[matchId].team1Points = parseInt(points1Input.value) || 0;
-        tournamentData.playoffs[matchId].team2Points = parseInt(points2Input.value) || 0;
+    // ===== ОБНОВЛЕНИЕ СУММЫ ОЧКОВ В РЕАЛЬНОМ ВРЕМЕНИ =====
+    if (matchId === 'grandFinal') {
+        // Функция для обновления суммы
+        function updateGrandFinalSum() {
+            const m1s1 = parseInt(document.getElementById(`${matchId}_m1s1`)?.value) || 0;
+            const m1s2 = parseInt(document.getElementById(`${matchId}_m1s2`)?.value) || 0;
+            const m2s1 = parseInt(document.getElementById(`${matchId}_m2s1`)?.value) || 0;
+            const m2s2 = parseInt(document.getElementById(`${matchId}_m2s2`)?.value) || 0;
+            const m3s1 = parseInt(document.getElementById(`${matchId}_m3s1`)?.value) || 0;
+            const m3s2 = parseInt(document.getElementById(`${matchId}_m3s2`)?.value) || 0;
+
+            const sum1 = m1s1 + m2s1 + m3s1;
+            const sum2 = m1s2 + m2s2 + m3s2;
+
+            const sumDisplay1 = document.getElementById(`${matchId}_sum1_display`);
+            const sumDisplay2 = document.getElementById(`${matchId}_sum2_display`);
+
+            if (sumDisplay1) sumDisplay1.textContent = sum1;
+            if (sumDisplay2) sumDisplay2.textContent = sum2;
+        }
+
+        // Вешаем обработчики на все поля
+        const fields = [`${matchId}_m1s1`, `${matchId}_m1s2`, `${matchId}_m2s1`, `${matchId}_m2s2`, `${matchId}_m3s1`, `${matchId}_m3s2`];
+        fields.forEach(fieldId => {
+            const el = document.getElementById(fieldId);
+            if (el) {
+                el.removeEventListener('input', updateGrandFinalSum);
+                el.addEventListener('input', updateGrandFinalSum);
+            }
+        });
+
+        // Обновляем сумму сразу после рендера
+        setTimeout(updateGrandFinalSum, 50);
+    }  
+
+    // ========== ОБЫЧНЫЙ МАТЧ (НЕ ГРАНД-ФИНАЛ) ==========
+    if (matchId !== 'grandFinal') {
+        if (score1Input && score2Input) {
+            let score1 = parseInt(score1Input.value) || 0;
+            let score2 = parseInt(score2Input.value) || 0;
+            score1 = Math.min(score1, 1);
+            score2 = Math.min(score2, 1);
+            tournamentData.playoffs[matchId].team1Score = score1;
+            tournamentData.playoffs[matchId].team2Score = score2;
+        }
+
+        if (points1Input && points2Input) {
+            tournamentData.playoffs[matchId].team1Points = parseInt(points1Input.value) || 0;
+            tournamentData.playoffs[matchId].team2Points = parseInt(points2Input.value) || 0;
+        }
+
+        if (tournamentData.playoffs[matchId].team1 && tournamentData.playoffs[matchId].team1 !== 'TBD' &&
+            tournamentData.playoffs[matchId].team1 !== '' &&
+            tournamentData.playoffs[matchId].team2 && tournamentData.playoffs[matchId].team2 !== 'TBD' &&
+            tournamentData.playoffs[matchId].team2 !== '') {
+
+            const score1 = tournamentData.playoffs[matchId].team1Score;
+            const score2 = tournamentData.playoffs[matchId].team2Score;
+
+            if (score1 > score2) {
+                tournamentData.playoffs[matchId].winner = tournamentData.playoffs[matchId].team1;
+            } else if (score2 > score1) {
+                tournamentData.playoffs[matchId].winner = tournamentData.playoffs[matchId].team2;
+            } else {
+                tournamentData.playoffs[matchId].winner = '';
+            }
+        }
     }
 
+    // ========== ОБЩИЕ ПОЛЯ (ДАТА, СТРИМ) ==========
     if (dateInput && dateInput.value) {
         let dateValue = dateInput.value;
         if (dateValue && !dateValue.includes('T')) {
@@ -4768,23 +5228,6 @@ function handlePlayoffUpdate(matchId) {
     if (streamUrlInput) {
         tournamentData.playoffs[matchId].streamUrl = streamUrlInput.value;
         tempPlayoffStreamUrls[matchId] = streamUrlInput.value;
-    }
-
-    if (tournamentData.playoffs[matchId].team1 && tournamentData.playoffs[matchId].team1 !== 'TBD' &&
-        tournamentData.playoffs[matchId].team1 !== '' &&
-        tournamentData.playoffs[matchId].team2 && tournamentData.playoffs[matchId].team2 !== 'TBD' &&
-        tournamentData.playoffs[matchId].team2 !== '') {
-
-        const score1 = tournamentData.playoffs[matchId].team1Score;
-        const score2 = tournamentData.playoffs[matchId].team2Score;
-
-        if (score1 > score2) {
-            tournamentData.playoffs[matchId].winner = tournamentData.playoffs[matchId].team1;
-        } else if (score2 > score1) {
-            tournamentData.playoffs[matchId].winner = tournamentData.playoffs[matchId].team2;
-        } else {
-            tournamentData.playoffs[matchId].winner = '';
-        }
     }
 
     // ========== ЗАПОМИНАЕМ ID МАТЧА ==========
@@ -7742,7 +8185,7 @@ const PREDICTION_CONFIG = {
     groupStage: {
         name: 'ГРУППОВОЙ ЭТАП',
         formUrl: 'https://forms.gle/BSs7kmQRiZJGuVEW7',
-        statsUrl: 'https://script.google.com/macros/s/AKfycbxooRcFifbMi9yjXCqrSJmFLrX8RCEFrPwi6d2kewYIXtoeLE4wnv7CvhBpb5mFjnTYhA/exec',
+        statsUrl: 'https://script.google.com/macros/s/AKfycbz59oaYhpeDFrsextaRFj12D5Hc6NNXOOw8w_Q0rD-f7KgH_XGx5qcLT1v6zhF_sqF-ZA/exec',
         startDate: null,
         endDate: null,
         votingActive: false,
@@ -8279,20 +8722,35 @@ function renderChart(containerId, data, actualTeams, stageKey) {
 
     const sorted = Object.entries(data).sort((a, b) => b[1] - a[1]);
 
-    // Определяем, какие команды считаются "победителями" для подсветки
+    // ========== ОПРЕДЕЛЯЕМ КОМАНДЫ ДЛЯ ПОДСВЕТКИ ==========
     let winnersArray = [];
     
     if (stageKey === 'groupStage') {
+        // Для группового этапа — подсвечиваем ТОП-2 из каждой группы (4 команды)
         const isGroupCompleted = isGroupStageResultsKnown();
-        winnersArray = (isGroupCompleted && Array.isArray(actualTeams)) ? actualTeams : [];
+        if (isGroupCompleted) {
+            winnersArray = getGroupWinnersList();
+        }
     } else if (stageKey === 'playoffs') {
-        // Подсвечиваем команды, которые уже попали в гранд-финал
-        winnersArray = (Array.isArray(actualTeams) && actualTeams.length > 0) ? actualTeams : [];
+        // Для плей-офф — подсвечиваем команды в гранд-финале (2 команды)
+        const grandFinal = tournamentData.playoffs.grandFinal;
+        if (grandFinal) {
+            const teams = [];
+            if (grandFinal.team1 && grandFinal.team1 !== '' && grandFinal.team1 !== 'TBD') {
+                teams.push(grandFinal.team1);
+            }
+            if (grandFinal.team2 && grandFinal.team2 !== '' && grandFinal.team2 !== 'TBD') {
+                teams.push(grandFinal.team2);
+            }
+            winnersArray = teams;
+        }
     } else if (stageKey === 'grandFinal') {
         // Для гранд-финала подсвечиваем только команду-чемпиона
         const grandFinalMatch = tournamentData.playoffs.grandFinal;
         const champion = grandFinalMatch.winner;
-        winnersArray = (champion && champion !== '' && champion !== 'TBD') ? [champion] : [];
+        if (champion && champion !== '' && champion !== 'TBD') {
+            winnersArray = [champion];
+        }
     }
     // Для arenaVotes winnersArray остаётся пустым
 
@@ -8329,41 +8787,79 @@ function renderRankings(containerId, data, type) {
         return;
     }
 
-    if (!data) {
+    if (!data || Object.keys(data).length === 0) {
         container.innerHTML = `<div class="loading">${t('no_data_to_display')}</div>`;
         return;
     }
 
+    // ========== ДИАГНОСТИКА ==========
+    console.log('renderRankings data:', data);
+    console.log('renderRankings type:', type);
+
     let html = '<div class="prediction-rankings-container">';
 
+    // ========== ДЛЯ ГРУППОВОГО ЭТАПА ==========
     if (type === 'group') {
-        const categories = [
-            { key: 'perfect', title: t('ranking_category_perfect') },
-            { key: 'three', title: t('ranking_category_three') },
-            { key: 'two', title: t('ranking_category_two') }
-        ];
+        // Проверяем разные возможные ключи
+        const perfectKey = data.perfect !== undefined ? 'perfect' : (data.correct !== undefined ? 'correct' : null);
+        const threeKey = data.three !== undefined ? 'three' : (data.partial !== undefined ? 'partial' : null);
+        const twoKey = data.two !== undefined ? 'two' : null;
+
+        const categories = [];
+
+        if (perfectKey) {
+            categories.push({ key: perfectKey, title: t('ranking_category_perfect') });
+        }
+        if (threeKey) {
+            categories.push({ key: threeKey, title: t('ranking_category_three') });
+        }
+        if (twoKey) {
+            categories.push({ key: twoKey, title: t('ranking_category_two') });
+        }
+
+        // Если нет стандартных ключей, пробуем найти любые массивы
+        if (categories.length === 0) {
+            for (const [key, value] of Object.entries(data)) {
+                if (Array.isArray(value) && value.length > 0) {
+                    categories.push({ key: key, title: key.toUpperCase() });
+                }
+            }
+        }
 
         for (const cat of categories) {
             const users = data[cat.key] || [];
-            // Сортируем пользователей по имени для удобства
-            const sortedUsers = [...users].sort((a, b) => a.name.localeCompare(b.name));
+            // Сортируем пользователей по имени
+            const sortedUsers = [...users].sort((a, b) => {
+                const nameA = a.name || a.username || a.user || '';
+                const nameB = b.name || b.username || b.user || '';
+                return nameA.localeCompare(nameB);
+            });
 
             html += `
                 <div class="prediction-rank-table">
                     <div class="prediction-rank-title">${cat.title} (${users.length})</div>
                     <div class="prediction-rank-rows">
-                        ${sortedUsers.map(user => `
-                            <div class="prediction-rank-row" data-user-name="${escapeHtml(user.name)}">
-                                <span class="prediction-rank-name">${escapeHtml(user.name)}</span>
-                                <span class="prediction-rank-picks">${user.picks ? user.picks.join(', ') : (user.correct ? user.correct.join(', ') : '')}</span>
-                            </div>
-                        `).join('')}
+                        ${sortedUsers.map(user => {
+                            const userName = user.name || user.username || user.user || 'Аноним';
+                            const picks = user.picks || user.correct || user.answer || [];
+                            const picksText = Array.isArray(picks) ? picks.join(', ') : '';
+                            return `
+                                <div class="prediction-rank-row" data-user-name="${escapeHtml(userName)}">
+                                    <span class="prediction-rank-name">${escapeHtml(userName)}</span>
+                                    <span class="prediction-rank-picks">${escapeHtml(picksText)}</span>
+                                </div>
+                            `;
+                        }).join('')}
                         ${users.length === 0 ? '<div class="prediction-rank-row"><span class="prediction-rank-name" style="color: #666666;">' + t('no_participants') + '</span><span class="prediction-rank-picks"></span></div>' : ''}
                     </div>
                 </div>
             `;
         }
-    } else if (type === 'playoffs') {
+    }
+
+    // ========== ДЛЯ ПЛЕЙ-ОФФ ==========
+    else if (type === 'playoffs') {
+        // ... аналогичная логика для плей-офф
         const categories = [
             { key: 'two', title: t('ranking_category_two') },
             { key: 'one', title: t('ranking_category_one') }
@@ -8371,51 +8867,69 @@ function renderRankings(containerId, data, type) {
 
         for (const cat of categories) {
             const users = data[cat.key] || [];
-            // Сортируем пользователей по имени для удобства
-            const sortedUsers = [...users].sort((a, b) => a.name.localeCompare(b.name));
+            const sortedUsers = [...users].sort((a, b) => {
+                const nameA = a.name || a.username || a.user || '';
+                const nameB = b.name || b.username || b.user || '';
+                return nameA.localeCompare(nameB);
+            });
 
             html += `
                 <div class="prediction-rank-table">
                     <div class="prediction-rank-title">${cat.title} (${users.length})</div>
                     <div class="prediction-rank-rows">
-                        ${sortedUsers.map(user => `
-                            <div class="prediction-rank-row" data-user-name="${escapeHtml(user.name)}">
-                                <span class="prediction-rank-name">${escapeHtml(user.name)}</span>
-                                <span class="prediction-rank-picks">${user.picks ? user.picks.join(', ') : (user.correct ? user.correct.join(', ') : '')}</span>
-                            </div>
-                        `).join('')}
-                        ${users.length === 0 ? '<div class="prediction-rank-row"><span class="prediction-rank-name" style="color: #666666;">' + t('no_participants') + '</span><span class="prediction-rank-picks"></span></div>' : ''}
-                    </div>
-                </div>
-            `;
-        }
-    } else if (type === 'grandFinal') {
-        const categories = [
-            { key: 'correct', title: t('ranking_category_correct') },
-            { key: 'wrong', title: t('ranking_category_wrong') }
-        ];
-        
-        for (const cat of categories) {
-            const users = data[cat.key] || [];
-            const sortedUsers = [...users].sort((a, b) => a.name.localeCompare(b.name));
-            
-            html += `
-                <div class="prediction-rank-table">
-                    <div class="prediction-rank-title">${cat.title} (${users.length})</div>
-                    <div class="prediction-rank-rows">
-                        ${sortedUsers.map(user => `
-                            <div class="prediction-rank-row" data-user-name="${escapeHtml(user.name)}">
-                                <span class="prediction-rank-name">${escapeHtml(user.name)}</span>
-                                <span class="prediction-rank-picks">${user.pick || ''}</span>
-                            </div>
-                        `).join('')}
+                        ${sortedUsers.map(user => {
+                            const userName = user.name || user.username || user.user || 'Аноним';
+                            const picks = user.picks || user.correct || [];
+                            const picksText = Array.isArray(picks) ? picks.join(', ') : '';
+                            return `
+                                <div class="prediction-rank-row" data-user-name="${escapeHtml(userName)}">
+                                    <span class="prediction-rank-name">${escapeHtml(userName)}</span>
+                                    <span class="prediction-rank-picks">${escapeHtml(picksText)}</span>
+                                </div>
+                            `;
+                        }).join('')}
                         ${users.length === 0 ? '<div class="prediction-rank-row"><span class="prediction-rank-name" style="color: #666666;">' + t('no_participants') + '</span><span class="prediction-rank-picks"></span></div>' : ''}
                     </div>
                 </div>
             `;
         }
     }
-    
+
+    // ========== ДЛЯ ГРАНД-ФИНАЛА ==========
+    else if (type === 'grandFinal') {
+        const categories = [
+            { key: 'correct', title: t('ranking_category_correct') },
+            { key: 'wrong', title: t('ranking_category_wrong') }
+        ];
+
+        for (const cat of categories) {
+            const users = data[cat.key] || [];
+            const sortedUsers = [...users].sort((a, b) => {
+                const nameA = a.name || a.username || a.user || '';
+                const nameB = b.name || b.username || b.user || '';
+                return nameA.localeCompare(nameB);
+            });
+
+            html += `
+                <div class="prediction-rank-table">
+                    <div class="prediction-rank-title">${cat.title} (${users.length})</div>
+                    <div class="prediction-rank-rows">
+                        ${sortedUsers.map(user => {
+                            const userName = user.name || user.username || user.user || 'Аноним';
+                            const pick = user.pick || user.answer || '';
+                            return `
+                                <div class="prediction-rank-row" data-user-name="${escapeHtml(userName)}">
+                                    <span class="prediction-rank-name">${escapeHtml(userName)}</span>
+                                    <span class="prediction-rank-picks">${escapeHtml(pick)}</span>
+                                </div>
+                            `;
+                        }).join('')}
+                        ${users.length === 0 ? '<div class="prediction-rank-row"><span class="prediction-rank-name" style="color: #666666;">' + t('no_participants') + '</span><span class="prediction-rank-picks"></span></div>' : ''}
+                    </div>
+                </div>
+            `;
+        }
+    }
 
     html += '</div>';
 
@@ -8424,14 +8938,6 @@ function renderRankings(containerId, data, type) {
     }
 
     container.innerHTML = html;
-
-    // Показываем кнопку экспорта только для администратора
-    if (typeof isAdmin !== 'undefined' && isAdmin) {
-        const exportBtn = document.getElementById('export-ranking-btn');
-        if (exportBtn) {
-            exportBtn.style.display = 'inline-flex';
-        }
-    }
 }
 
 function renderStageBlock(stageKey, stage) {
