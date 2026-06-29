@@ -254,6 +254,39 @@ body.admin-mode .admin-exit-btn {
     font-weight: 700;
     letter-spacing: 1px;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.6);
+    padding: 4px 14px;
+    border-radius: 4px;
+    border: 1px solid rgba(204, 170, 102, 0.3);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    transition: all 0.3s ease;
+    position: relative;
+    display: inline-block;
+}
+
+/* ===== СТРЕЛКА СЛЕВА ===== */
+.trophy-fab-header-text::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-right: 6px solid rgba(204, 170, 102, 0.3);
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+}
+
+.trophy-fab-header-text::after {
+    content: '';
+    position: absolute;
+    left: -4px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-right: 6px solid rgba(0, 0, 0, 0.6);
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    z-index: 1;
 }
 
 /* ==================== ОСНОВНОЙ КОНТЕЙНЕР ==================== */
@@ -1065,8 +1098,6 @@ footer {
     padding-left: 9px;
 }
 
-.match-winner .match-team-name { color: #6aaf6a; }
-
 /* ==================== LIVE КНОПКА (УНИВЕРСАЛЬНАЯ) ==================== */
 .match-live-btn,
 .match-live-btn-finished,
@@ -1482,10 +1513,17 @@ footer {
     padding-left: 9px;
 }
 
-/* ===== ПОБЕДИТЕЛЬ В ПЛЕЙ-ОФФ (ЗЕЛЁНЫЙ) ===== */
+/* ===== ИМЯ ПОБЕДИТЕЛЯ (БЕЛЫЙ) ===== */
+.match-winner .match-team-name,
 .playoff-winner-text {
-    color: #6aaf6a !important;
-    font-weight: 700;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+}
+
+/* ===== ИМЯ ПРОИГРАВШЕГО (СЕРЫЙ) ===== */
+.match-loser-name,
+.playoff-loser-text {
+    color: #666666 !important;
 }
 
 .playoff-admin-controls {

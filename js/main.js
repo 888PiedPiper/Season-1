@@ -407,6 +407,10 @@ const translations = {
         'saving': 'Сохранение',
         'error_saving_to_google': 'Ошибка сохранения в Google Sheets',
         'error': 'Ошибка',
+        'waiting_for_matches': 'ОЖИДАНИЕ МАТЧЕЙ',
+        'match_1': 'Матч 1',
+        'match_2': 'Матч 2',
+        'match_3': 'Матч 3',
     },
     en: {
         // ==================== ОСНОВНЫЕ ====================
@@ -755,6 +759,10 @@ const translations = {
         'saving': 'Saving',
         'error_saving_to_google': 'Error saving to Google Sheets',
         'error': 'Error',
+        'waiting_for_matches': 'WAITING FOR MATCHES',
+        'match_1': 'Match 1',
+        'match_2': 'Match 2',
+        'match_3': 'Match 3',
     }
 };
 
@@ -4382,11 +4390,11 @@ function renderMatchCard(group, match, idx) {
         <div class="match-teams-row">
             <div class="match-team match-team-left ${winnerClass1}">
                 ${team1AvatarHtml}
-                <span class="match-team-name" style="cursor: pointer;" data-team-name="${escapeHtml(safeMatch.team1)}">${escapeHtml(safeMatch.team1)}</span>
+                <span class="match-team-name ${isCompleted && !isWinner1 ? 'match-loser-name' : ''}" style="cursor: pointer;" data-team-name="${escapeHtml(safeMatch.team1)}">${escapeHtml(safeMatch.team1)}</span>
             </div>
             <div class="match-vs ${isLiveNow ? 'match-vs-live' : ''}">${t('vs')}</div>
             <div class="match-team match-team-right ${winnerClass2}">
-                <span class="match-team-name" style="cursor: pointer;" data-team-name="${escapeHtml(safeMatch.team2)}">${escapeHtml(safeMatch.team2)}</span>
+                <span class="match-team-name ${isCompleted && !isWinner2 ? 'match-loser-name' : ''}" style="cursor: pointer;" data-team-name="${escapeHtml(safeMatch.team2)}">${escapeHtml(safeMatch.team2)}</span>
                 ${team2AvatarHtml}
             </div>
         </div>
@@ -4910,17 +4918,17 @@ function renderPlayoffMatchCard(match, matchId, extraClass = '') {
 
         // Матч 1
         if (m1s1 > 0 || m1s2 > 0) {
-            matchesHtml += renderMatchLine('Матч 1', m1s1, m1s2, m1Winner);
+            matchesHtml += renderMatchLine(t('match_1'), m1s1, m1s2, m1Winner);
         }
 
         // Матч 2
         if (m2s1 > 0 || m2s2 > 0) {
-            matchesHtml += renderMatchLine('Матч 2', m2s1, m2s2, m2Winner);
+            matchesHtml += renderMatchLine(t('match_2'), m2s1, m2s2, m2Winner);
         }
 
         // Матч 3
         if (m3s1 > 0 || m3s2 > 0) {
-            matchesHtml += renderMatchLine('Матч 3', m3s1, m3s2, m3Winner);
+            matchesHtml += renderMatchLine(t('match_3'), m3s1, m3s2, m3Winner);
         }
 
         if (matchesHtml) {
@@ -4932,7 +4940,10 @@ function renderPlayoffMatchCard(match, matchId, extraClass = '') {
             `;
         } else {
             bestOf3Html = `
-                <div style="text-align: center; font-size: 0.65rem; color: #888888; margin-top: 4px;">Best of 3</div>
+                <div class="best-of-3-container">
+                    <div class="best-of-3-label">Best of 3</div>
+                    <div style="text-align: center; color: #666666; font-size: 0.6rem; padding: 4px 0;">${t('waiting_for_matches')}</div>
+                </div>
             `;
         }
     }
@@ -5014,11 +5025,11 @@ function renderPlayoffMatchCard(match, matchId, extraClass = '') {
                 <div class="playoff-teams-row">
                     <div class="playoff-team playoff-team-left ${winnerClass1}">
                         ${team1AvatarHtml}
-                        <span class="playoff-team-name ${isTBDTeam1 ? 'tbd-team' : ''} ${isWinner1 ? 'playoff-winner-text' : ''}" style="cursor: pointer;" data-team-name="${escapeHtml(safeMatch.team1)}">${escapeHtml(safeMatch.team1)}</span>
+                        <span class="playoff-team-name ${isTBDTeam1 ? 'tbd-team' : ''} ${isWinner1 ? 'playoff-winner-text' : 'playoff-loser-text'}" style="cursor: pointer;" data-team-name="${escapeHtml(safeMatch.team1)}">${escapeHtml(safeMatch.team1)}</span>
                     </div>
                     <div class="playoff-vs ${vsAnimationClass}">${t('vs')}</div>
                     <div class="playoff-team playoff-team-right ${winnerClass2}">
-                        <span class="playoff-team-name ${isTBDTeam2 ? 'tbd-team' : ''} ${isWinner2 ? 'playoff-winner-text' : ''}" style="cursor: pointer;" data-team-name="${escapeHtml(safeMatch.team2)}">${escapeHtml(safeMatch.team2)}</span>
+                        <span class="playoff-team-name ${isTBDTeam2 ? 'tbd-team' : ''} ${isWinner2 ? 'playoff-winner-text' : 'playoff-loser-text'}" style="cursor: pointer;" data-team-name="${escapeHtml(safeMatch.team2)}">${escapeHtml(safeMatch.team2)}</span>
                         ${team2AvatarHtml}
                     </div>
                 </div>
@@ -10205,6 +10216,10 @@ async function showTeamRoster(teamName) {
     html += '</div>';
     html += '<div class="roster-modal-header-compact-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">';
     html += '<div style="display: flex; align-items: center; gap: 8px;">';
+    html += '<span class="total-power-label">Players:</span>';
+    html += '<span class="total-power-value" style="color: #ccaa66; font-size: 0.9rem;">' + players.length + '</span>';
+    html += '</div>';
+    html += '<div style="display: flex; align-items: center; gap: 8px;">';
     html += '<span class="total-power-label">Avg WR:</span>';
     html += '<span class="total-winrate-value" style="color: ' + avgWinrateColor + ';">' + avgWinrateText + '</span>';
     html += '</div>';
@@ -10312,6 +10327,10 @@ async function showMatchComparison(team1Name, team2Name) {
     html += '<h3>' + escapeHtml(team1Name) + '</h3>';
     html += '<div class="match-compare-stats-right">';
     html += '<div style="display: flex; align-items: center; gap: 6px;">';
+    html += '<span style="color: #888888; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">Players:</span>';
+    html += '<span style="color: #ccaa66; font-size: 0.85rem; font-weight: 700;">' + team1Players.length + '</span>';
+    html += '</div>';
+    html += '<div style="display: flex; align-items: center; gap: 6px;">';
     html += '<span style="color: #888888; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">Avg WR:</span>';
     html += '<span class="match-compare-avg-winrate" style="color: ' + avgColor1 + '; font-size: 0.85rem; font-weight: 700;">' + avgText1 + '</span>';
     html += '</div>';
@@ -10384,6 +10403,10 @@ async function showMatchComparison(team1Name, team2Name) {
     html += '<div class="match-compare-team">';
     html += '<div class="match-compare-team-header right">';
     html += '<div class="match-compare-stats-left">';
+    html += '<div style="display: flex; align-items: center; gap: 6px;">';
+    html += '<span style="color: #ccaa66; font-size: 0.85rem; font-weight: 700;">' + team2Players.length + '</span>';
+    html += '<span style="color: #888888; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">:Players</span>';
+    html += '</div>';
     html += '<div style="display: flex; align-items: center; gap: 6px;">';
     html += '<span class="match-compare-avg-winrate" style="color: ' + avgColor2 + '; font-size: 0.85rem; font-weight: 700;">' + avgText2 + '</span>';
     html += '<span style="color: #888888; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">:Avg WR</span>';
