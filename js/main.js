@@ -4829,7 +4829,7 @@ function renderPlayoffMatchCard(match, matchId, extraClass = '') {
     const team1AvatarHtml = !isTBDTeam1 ? getAvatarHtml(safeMatch.team1) : '';
     const team2AvatarHtml = !isTBDTeam2 ? getAvatarHtml(safeMatch.team2) : '';
 
-    // ========== BEST OF 3 ДЛЯ ГРАНД-ФИНАЛА ==========
+    // ========== BEST OF 2 ДЛЯ ГРАНД-ФИНАЛА ==========
     let bestOf3Html = '';
     if (isGrandFinal) {
         const m1s1 = match.match1Score1 || 0;
@@ -4934,14 +4934,14 @@ function renderPlayoffMatchCard(match, matchId, extraClass = '') {
         if (matchesHtml) {
             bestOf3Html = `
                 <div class="best-of-3-container">
-                    <div class="best-of-3-label">Best of 3</div>
+                    <div class="best-of-3-label">Best of 2</div>
                     ${matchesHtml}
                 </div>
             `;
         } else {
             bestOf3Html = `
                 <div class="best-of-3-container">
-                    <div class="best-of-3-label">Best of 3</div>
+                    <div class="best-of-3-label">Best of 2</div>
                     <div style="text-align: center; color: #666666; font-size: 0.6rem; padding: 4px 0;">${t('waiting_for_matches')}</div>
                 </div>
             `;
