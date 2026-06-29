@@ -13,5 +13,5 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 Отправьте на GitHub: git push origin master
 
 git add .
-git commit -m "feat: точка на 6px LIVE"
+git commit -m "feat: добавлена best of 3"
 git push origin master
