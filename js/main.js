@@ -1,8 +1,13 @@
 // ==================== НАСТРОЙКИ ====================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxrtnDLZa2h7_PLqq061erVo34uw-Org_DxMYjwZGlTztq2nCfHt3Mnb2BdBdSaSuO-/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby9bB7ekAcvbnaai8_etUlUJwVbxqrrBhcKtmZWrtqzoiDeNUy_uAioervMt1L10B-l/exec';
 const SHEET_ID = '1CeJjGHytehxVIxSxY_j_mx84EvGzKJNA5x9y9n-MSBs';
 const API_KEY = 'AIzaSyCB_5jPpU-GtKmmzx8FTTu33WtbNntxGvg';
 const TEAM_ROSTERS_URL = 'https://script.google.com/macros/s/AKfycbwv0BDy61n6t7Cmlvg9pVusvSwLnTNNkIVhcBsxknzGXnAgW4YrM5Eg7eQtCAukQ4ju/exec';
+
+// ==================== ЗАЩИТА ОТ ОШИБОК JSONP ====================
+const JSONP_RETRY_COUNT = 2; // Количество повторных попыток
+const JSONP_TIMEOUT = 30000; // 30 секунд таймаут
+const JSONP_RETRY_DELAY = 1500; // 1.5 секунды между попытками
 
 // ==================== КЕШИРОВАНИЕ ====================
 const CACHE_KEY = 'tournament_cache';
@@ -20,6 +25,8 @@ const PREDICTION_CACHE_DURATION = 15 * 60 * 1000; // 15 минут
 const RULES_CACHE_KEY = 'rules_cache';
 // Время жизни кеша регламента - 1 час (регламент меняется редко)
 const RULES_CACHE_DURATION = 60 * 60 * 1000; // 1 час
+// Ключ для хеша обновлений (для легкого запроса)
+const LAST_UPDATE_KEY = 'last_update_hash';
 let isAdmin = false;
 
 // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
@@ -928,17 +935,20 @@ function saveToCache(data) {
 }
 
 // ==================== ОБЪЕДИНЁННАЯ ЗАГРУЗКА ДАННЫХ ====================
-async function loadAllData() {
+async function loadAllData(showLoader = true) {
     try {
-        // Обновляем прогресс до 20%
-        updateLoaderProgress(20);
+        // Обновляем прогресс только если showLoader = true
+        if (showLoader) {
+            updateLoaderProgress(20);
+        }
 
         const response = await fetch(`${SCRIPT_URL}?action=getAllData`);
         const data = await response.json();
 
         if (data.success) {
-            // Обновляем прогресс до 40%
-            updateLoaderProgress(40);
+            if (showLoader) {
+                updateLoaderProgress(40);
+            }
 
             // Инициализируем teamAvatars пустым объектом ДО использования
             if (!window.teamAvatars) {
@@ -969,8 +979,9 @@ async function loadAllData() {
             }
             // ================================================================
 
-            // Обновляем прогресс до 60%
-            updateLoaderProgress(60);
+            if (showLoader) {
+                updateLoaderProgress(60);
+            }
 
             if (data.avatars) {
                 // Формат: { "Название команды": "url аватара" }
@@ -1019,18 +1030,18 @@ async function loadAllData() {
                 }
             }
 
-            // Обновляем прогресс до 80%
-            updateLoaderProgress(80);
+            if (showLoader) {
+                updateLoaderProgress(80);
+            }
 
             if (data.drawStatus !== undefined) {
                 updateDrawSectionVisibility();
             }
 
             // Загружаем составы команд параллельно с остальными данными
-            // Используем Promise.race для таймаута
             const rosterPromise = loadTeamRosters();
             const timeoutPromise = new Promise((resolve) => {
-                setTimeout(() => resolve(null), 5000); // Таймаут 5 секунд для составов
+                setTimeout(() => resolve(null), 5000);
             });
 
             const rosters = await Promise.race([rosterPromise, timeoutPromise]);
@@ -1044,8 +1055,9 @@ async function loadAllData() {
             // Обновляем UI
             if (!isAdmin) saveToCache(data);
 
-            // Обновляем прогресс до 90%
-            updateLoaderProgress(90);
+            if (showLoader) {
+                updateLoaderProgress(90);
+            }
 
             // Безопасная отрисовка
             renderGroups();
@@ -1060,8 +1072,9 @@ async function loadAllData() {
             startCountdownTimer();
             initPredictionDates();
 
-            // Обновляем прогресс до 100%
-            updateLoaderProgress(100);
+            if (showLoader) {
+                updateLoaderProgress(100);
+            }
 
             return true;
         }
@@ -1072,13 +1085,17 @@ async function loadAllData() {
     }
 }
 
-async function loadAllDataWithCache() {
-    showPageLoader();
+async function loadAllDataWithCache(showLoader = true) {
+    if (showLoader) {
+        showPageLoader();
+    }
 
     if (!shouldUseCache()) {
-        await loadAllDataWithRetry(0, 3);
+        await loadAllDataWithRetry(0, 3, showLoader);
         checkPastDates();
-        hidePageLoader();
+        if (showLoader) {
+            hidePageLoader();
+        }
         return;
     }
 
@@ -1099,7 +1116,6 @@ async function loadAllDataWithCache() {
         if (data.avatars) {
             window.teamAvatars = data.avatars;
 
-            // Восстанавливаем порядок команд из tournamentData.groups
             const groupATeams = tournamentData.groups.A.teams || [];
             const groupBTeams = tournamentData.groups.B.teams || [];
             const allTeamsInOrder = [...groupATeams, ...groupBTeams];
@@ -1141,13 +1157,17 @@ async function loadAllDataWithCache() {
         updateGroupStageAnimation();
         startCountdownTimer();
 
-        hidePageLoader();
+        if (showLoader) {
+            hidePageLoader();
+        }
         return true;
     }
 
-    const success = await loadAllDataWithRetry(0, 3);
+    const success = await loadAllDataWithRetry(0, 3, showLoader);
     checkPastDates();
-    hidePageLoader();
+    if (showLoader) {
+        hidePageLoader();
+    }
     return success;
 }
 
@@ -1186,7 +1206,10 @@ window.addEventListener('offline', updateOnlineStatus);
 async function checkGoogleSheetsConnection() {
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const timeoutId = setTimeout(() => {
+            console.log('Connection check timeout, aborting...');
+            controller.abort();
+        }, 15000); // 15 секунд (было 5)
         
         const response = await fetch(`${SCRIPT_URL}?action=ping`, {
             method: 'GET',
@@ -1199,6 +1222,7 @@ async function checkGoogleSheetsConnection() {
             console.log('Google Sheets connection: OK');
             return true;
         }
+        console.warn('Google Sheets connection: Response not OK', response.status);
         return false;
     } catch (error) {
         console.warn('Google Sheets connection: FAILED', error);
@@ -1207,19 +1231,25 @@ async function checkGoogleSheetsConnection() {
 }
 
 // Обновлённая функция загрузки с проверкой соединения
-async function loadAllDataWithRetry(retryCount = 0, maxRetries = 3) {
-    showPageLoader();
+async function loadAllDataWithRetry(retryCount = 0, maxRetries = 3, showLoader = true) {
+    if (showLoader) {
+        showPageLoader();
+    }
 
     if (!navigator.onLine) {
         const cached = getCachedData();
         if (cached) {
             console.log('Офлайн-режим: используем кешированные данные');
             applyCachedData(cached.data);
-            hidePageLoader();
+            if (showLoader) {
+                hidePageLoader();
+            }
             showStatus('Офлайн-режим: показаны кешированные данные', 'success');
             return true;
         } else {
-            hidePageLoader();
+            if (showLoader) {
+                hidePageLoader();
+            }
             showStatus('Нет соединения и нет кешированных данных', 'error');
             return false;
         }
@@ -1230,15 +1260,17 @@ async function loadAllDataWithRetry(retryCount = 0, maxRetries = 3) {
         if (!connectionOk && retryCount < maxRetries) {
             console.log(`Попытка ${retryCount + 1}/${maxRetries}...`);
             await new Promise(resolve => setTimeout(resolve, 2000));
-            return loadAllDataWithRetry(retryCount + 1, maxRetries);
+            return loadAllDataWithRetry(retryCount + 1, maxRetries, showLoader);
         }
 
         if (!connectionOk) {
             throw new Error('Нет соединения с сервером');
         }
 
-        const success = await loadAllData();
-        hidePageLoader();
+        const success = await loadAllData(showLoader);
+        if (showLoader) {
+            hidePageLoader();
+        }
         return success;
 
     } catch (error) {
@@ -1247,20 +1279,23 @@ async function loadAllDataWithRetry(retryCount = 0, maxRetries = 3) {
         if (retryCount < maxRetries) {
             console.log(`Повторная попытка ${retryCount + 1}/${maxRetries} через 2 секунды...`);
             await new Promise(resolve => setTimeout(resolve, 2000));
-            return loadAllDataWithRetry(retryCount + 1, maxRetries);
+            return loadAllDataWithRetry(retryCount + 1, maxRetries, showLoader);
         }
 
-        // Пытаемся использовать кеш
         const cached = getCachedData();
         if (cached) {
             console.log('Используем кешированные данные после ошибки');
             applyCachedData(cached.data);
-            hidePageLoader();
+            if (showLoader) {
+                hidePageLoader();
+            }
             showStatus('Используются кешированные данные. Обновите страницу позже.', 'warning');
             return true;
         }
 
-        hidePageLoader();
+        if (showLoader) {
+            hidePageLoader();
+        }
         showStatus('Ошибка загрузки данных. Проверьте соединение.', 'error');
         return false;
     }
@@ -2466,128 +2501,130 @@ function addDrawAnimation(element) {
 // ==================== АВТО-ОБНОВЛЕНИЕ ДЛЯ ЗРИТЕЛЕЙ ====================
 
 let autoRefreshInterval = null;
-let currentDataHash = null;
+let lastKnownUpdate = null;
+let isPageVisible = true;
+let isUpdating = false;
+
+// Следим за видимостью страницы
+document.addEventListener('visibilitychange', function() {
+    isPageVisible = !document.hidden;
+    if (isPageVisible) {
+        console.log('📱 Страница активна, авто-обновление возобновлено');
+        // При возвращении на вкладку сразу проверяем обновления
+        checkForUpdates();
+    } else {
+        console.log('📱 Страница скрыта, авто-обновление приостановлено');
+    }
+});
+
+async function checkForUpdates() {
+    if (isAdmin) return;
+    if (!isPageVisible) return;
+    if (isUpdating) {
+        console.log('⏳ Уже идет обновление, пропускаем');
+        return;
+    }
+    
+    try {
+        isUpdating = true;
+        
+        // Проверяем кеш — если он свежий (менее 2 минут), пропускаем
+        const cached = getCachedData();
+        if (cached) {
+            const age = Date.now() - cached.timestamp;
+            if (age < 120000) { // 2 минуты
+                console.log(`📦 Кеш свежий (${Math.round(age / 1000)}с), пропускаем запрос`);
+                isUpdating = false;
+                return;
+            }
+        }
+        
+        // Легкий запрос на проверку изменений
+        console.log('🔍 Проверяем изменения...');
+        const response = await fetch(`${SCRIPT_URL}?action=getLastUpdate`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const currentHash = data.lastUpdate;
+            
+            if (lastKnownUpdate && lastKnownUpdate !== currentHash) {
+                console.log('🔄 Данные изменились! Загружаем обновления...');
+                showToast(t('data_tournament_updated'), 'info', t('update'), 30000);
+                
+                // Очищаем кеш перед загрузкой новых данных
+                localStorage.removeItem(CACHE_KEY);
+                localStorage.removeItem('last_update_hash');
+                
+                // ========== ЗАГРУЖАЕМ ДАННЫЕ БЕЗ СПИННЕРА ==========
+                await loadAllDataWithCache(false);
+                
+                // Обновляем хеш
+                lastKnownUpdate = currentHash;
+                console.log('✅ Данные обновлены, новый хеш:', currentHash);
+            } else if (!lastKnownUpdate) {
+                // Первый запуск
+                lastKnownUpdate = currentHash;
+                console.log('✅ Начальный хеш сохранен:', currentHash);
+            } else {
+                console.log('✅ Изменений нет');
+            }
+        }
+    } catch (error) {
+        console.log('❌ Check for updates error:', error);
+    } finally {
+        isUpdating = false;
+    }
+}
 
 function initAutoRefresh() {
-    // ========== ЕСЛИ УЖЕ АДМИН — НЕ ЗАПУСКАЕМ ==========
     if (isAdmin) {
         console.log('Auto-refresh не запускается для администратора');
         return;
     }
 
-    // Очищаем старый интервал
     if (autoRefreshInterval) {
         clearInterval(autoRefreshInterval);
         autoRefreshInterval = null;
     }
 
-    console.log('Auto-refresh запущен для зрителей');
+    console.log('🚀 Auto-refresh запущен для зрителей (интервал: 30 секунд, только активная вкладка)');
+    console.log('📊 Отслеживаем изменения в: Groups, Playoffs, GroupTeams (MVP)');
 
-    // Запускаем проверку каждые 30 секунд
-    autoRefreshInterval = setInterval(async () => {
-        try {
-            // Проверяем, открыто ли модальное окно прогнозов
-            const predictionModal = document.getElementById('prediction-modal');
-            if (predictionModal && predictionModal.style.display === 'flex') {
-                await backgroundLoadAllPredictions();
-                return;
-            }
-
-            const response = await fetch(`${SCRIPT_URL}?action=getAllData`);
-            const data = await response.json();
-
-            if (data.success) {
-                // ========== СОХРАНЯЕМ РОСТЕРЫ ДЛЯ СРАВНЕНИЯ ==========
-                let rostersForHash = window._rosters || {};
-                if (data.rosters) {
-                    rostersForHash = data.rosters;
-                } else {
-                    try {
-                        const rosterResponse = await fetch(`${TEAM_ROSTERS_URL}?action=getTeamRosters`);
-                        const rosterData = await rosterResponse.json();
-                        if (rosterData.success && rosterData.rosters) {
-                            rostersForHash = rosterData.rosters;
-                        }
-                    } catch(e) {
-                        console.log('Rosters not available for hash');
-                    }
-                }
-
-                // Создаём хеш данных для сравнения (БЕЗ ПРИЗОВ!, НО С РОСТЕРАМИ)
-                const newHash = JSON.stringify({
-                    tournament: data.tournament,
-                    schedule: data.schedule,
-                    rosters: rostersForHash
-                });
-
-                if (currentDataHash && currentDataHash !== newHash) {
-                    // ========== ЕДИНОЕ УВЕДОМЛЕНИЕ ==========
-                    showToast(t('data_tournament_updated'), 'info', t('update'), 30000);
-
-                    // Обновляем данные
-                    if (data.schedule) {
-                        scheduleData = data.schedule;
-                        updateScheduleUI();
-                        checkPastDates();
-                    }
-                    if (data.tournament) {
-                        tournamentData = data.tournament;
-                    }
-                    if (data.prizes) {
-                        prizeData = data.prizes;
-                        for (let i = 1; i <= 8; i++) {
-                            const input = document.getElementById(`prize-${i}`);
-                            if (input && prizeData[i]) {
-                                input.value = prizeData[i];
-                            }
-                        }
-                        saveOriginalPrizes();
-                        updatePrizesButtonColor();
-                    }
-                    if (data.avatars) {
-                        window.teamAvatars = { ...window.teamAvatars, ...data.avatars };
-                    }
-
-                    // Обновляем ростера
-                    if (rostersForHash && Object.keys(rostersForHash).length > 0) {
-                        window._rosters = rostersForHash;
-                        calculateTotalPowers(rostersForHash);
-                        // Перерисовываем всё
-                        renderGroups();
-                        renderPlayoffs();
-                        renderResults();
-                    }
-
-                    // Перерисовываем
-                    renderGroups();
-                    renderPlayoffs();
-                    renderResults();
-                    updateDrawStatus();
-                    updateDrawButtons();
-                    updatePlayoffsBracket();
-                    updateDrawSectionVisibility();
-                    updateGroupStageAnimation();
-                    checkPastDates();
-                    startCountdownTimer();
-                    initPredictionDates();
-
-                    currentDataHash = newHash;
-                }
-            }
-        } catch (error) {
-            console.log('Auto-refresh error:', error);
+    try {
+        const savedHash = localStorage.getItem('last_update_hash');
+        if (savedHash) {
+            lastKnownUpdate = savedHash;
+            console.log('📦 Загружен сохраненный хеш:', lastKnownUpdate);
         }
-    }, 30000);
+    } catch(e) {}
 
-    // Сохраняем начальный хеш после загрузки (БЕЗ ПРИЗОВ!, НО С РОСТЕРАМИ)
     setTimeout(() => {
-        const rostersForHash = window._rosters || {};
-        currentDataHash = JSON.stringify({
-            tournament: tournamentData,
-            schedule: scheduleData,
-            rosters: rostersForHash
-        });
-    }, 2000);
+        const cached = getCachedData();
+        if (cached) {
+            const age = Date.now() - cached.timestamp;
+            console.log(`📦 Кеш существует, возраст: ${Math.round(age / 1000)}с`);
+            if (age > 120000) {
+                console.log('⏰ Кеш устарел, проверяем обновления...');
+                checkForUpdates();
+            }
+        } else {
+            console.log('📦 Кеша нет, загружаем данные...');
+            // ========== ЗДЕСЬ МЕНЯЕМ: showLoader = false ==========
+            loadAllDataWithCache(false).then(() => {
+                setTimeout(() => {
+                    checkForUpdates();
+                }, 1000);
+            });
+        }
+    }, 1000);
+
+    autoRefreshInterval = setInterval(() => {
+        if (!isPageVisible) {
+            console.log('📱 Страница не активна, пропускаем обновление');
+            return;
+        }
+        checkForUpdates();
+    }, 30000);
 }
 
 // ==================== ФОРМАТИРОВАНИЕ ДАТ ДЛЯ UTC ====================
@@ -4759,8 +4796,16 @@ function renderPlayoffMatchCard(match, matchId, extraClass = '') {
         sum2 = (m1s2 || 0) + (m2s2 || 0) + (m3s2 || 0);
     }
 
+    // ========== ОПРЕДЕЛЕНИЕ ЦВЕТОВ ИМЕН (как в групповом этапе) ==========
     const isWinner1 = safeMatch.winner === safeMatch.team1;
     const isWinner2 = safeMatch.winner === safeMatch.team2;
+    
+    // Для левой команды: победитель → белый, проигравший → серый (только если матч завершен)
+    const team1Class = isWinner1 ? 'playoff-winner-text' : (isCompleted && !isWinner1 ? 'playoff-loser-text' : '');
+    // Для правой команды: победитель → белый, проигравший → серый (только если матч завершен)
+    const team2Class = isWinner2 ? 'playoff-winner-text' : (isCompleted && !isWinner2 ? 'playoff-loser-text' : '');
+    
+    // Классы для контейнеров команд (для подсветки победителя)
     const winnerClass1 = isWinner1 ? 'playoff-winner-text' : '';
     const winnerClass2 = isWinner2 ? 'playoff-winner-text' : '';
 
@@ -5046,11 +5091,11 @@ function renderPlayoffMatchCard(match, matchId, extraClass = '') {
                 <div class="playoff-teams-row">
                     <div class="playoff-team playoff-team-left ${winnerClass1}">
                         ${team1AvatarHtml}
-                        <span class="playoff-team-name ${isTBDTeam1 ? 'tbd-team' : ''} ${isWinner1 ? 'playoff-winner-text' : 'playoff-loser-text'}" style="cursor: pointer;" data-team-name="${escapeHtml(safeMatch.team1)}">${escapeHtml(safeMatch.team1)}</span>
+                        <span class="playoff-team-name ${isTBDTeam1 ? 'tbd-team' : ''} ${team1Class}" style="cursor: pointer;" data-team-name="${escapeHtml(safeMatch.team1)}">${escapeHtml(safeMatch.team1)}</span>
                     </div>
                     <div class="playoff-vs ${vsAnimationClass}">${t('vs')}</div>
                     <div class="playoff-team playoff-team-right ${winnerClass2}">
-                        <span class="playoff-team-name ${isTBDTeam2 ? 'tbd-team' : ''} ${isWinner2 ? 'playoff-winner-text' : 'playoff-loser-text'}" style="cursor: pointer;" data-team-name="${escapeHtml(safeMatch.team2)}">${escapeHtml(safeMatch.team2)}</span>
+                        <span class="playoff-team-name ${isTBDTeam2 ? 'tbd-team' : ''} ${team2Class}" style="cursor: pointer;" data-team-name="${escapeHtml(safeMatch.team2)}">${escapeHtml(safeMatch.team2)}</span>
                         ${team2AvatarHtml}
                     </div>
                 </div>
@@ -6008,6 +6053,7 @@ async function fullResetTournament() {
             localStorage.removeItem('prediction_cache');
             localStorage.removeItem(TEAM_ROSTERS_CACHE_KEY);
             localStorage.removeItem(RULES_CACHE_KEY);
+            localStorage.removeItem('last_update_hash');
             console.log('All caches cleared on full reset');
         } catch(e) {
             console.warn('Failed to clear caches:', e);
@@ -6965,12 +7011,12 @@ function performExitActions() {
     stopAllTimers();
     isAdmin = false;
 
-    // Очищаем все кеши при выходе из админ-режима
     try {
         localStorage.removeItem(CACHE_KEY);
         localStorage.removeItem('prediction_cache');
         localStorage.removeItem(TEAM_ROSTERS_CACHE_KEY);
         localStorage.removeItem(RULES_CACHE_KEY);
+        localStorage.removeItem('last_update_hash');
         console.log('All caches cleared on admin exit');
     } catch(e) {
         console.warn('Failed to clear cache:', e);
@@ -6993,11 +7039,9 @@ function performExitActions() {
     renderPlayoffs();
     updateDrawButtons();
 
-    // Перезапускаем интервалы
     startCountdownTimer();
     startFabWaitingAnimation();
 
-    // Включаем авто-обновление для зрителей
     initAutoRefresh();
 
     showStatus('status_exit_admin', 'success');
@@ -8345,7 +8389,7 @@ function clearPredictionCache() {
 }
 
 // Универсальная функция загрузки данных прогнозов с кешем (использует JSONP)
-async function loadPredictionDataWithCache(stageKey, stage, forceRefresh = false) {
+async function loadPredictionDataWithCache(stageKey, stage, forceRefresh = false, retryCount = 0) {
     if (!stage || !stage.statsUrl || stage.statsUrl === '#') {
         return { success: false, error: 'No stats URL' };
     }
@@ -8360,7 +8404,7 @@ async function loadPredictionDataWithCache(stageKey, stage, forceRefresh = false
     }
     
     try {
-        console.log(`Loading ${stageKey} via JSONP...`);
+        console.log(`Loading ${stageKey} via JSONP (attempt ${retryCount + 1})...`);
         
         // Используем JSONP вместо fetch
         const data = await new Promise((resolve, reject) => {
@@ -8369,7 +8413,7 @@ async function loadPredictionDataWithCache(stageKey, stage, forceRefresh = false
             const timeoutId = setTimeout(() => {
                 cleanup();
                 reject(new Error('JSONP request timeout'));
-            }, 15000);
+            }, 40000); // 40 секунд (было 30)
             
             function cleanup() {
                 if (window[callbackName]) {
@@ -8420,6 +8464,14 @@ async function loadPredictionDataWithCache(stageKey, stage, forceRefresh = false
     } catch (error) {
         console.error(`Error loading ${stageKey}:`, error);
         
+        // ========== ПОВТОРНЫЕ ПОПЫТКИ ==========
+        if (retryCount < 2) {
+            console.log(`Retrying ${stageKey} (${retryCount + 1}/3)...`);
+            // Ждем 1-2 секунды перед повторной попыткой
+            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+            return loadPredictionDataWithCache(stageKey, stage, forceRefresh, retryCount + 1);
+        }
+        
         // Если есть кеш даже просроченный - используем как fallback
         const cached = getPredictionFromCache(stageKey);
         if (cached) {
@@ -8447,7 +8499,7 @@ const PREDICTION_CONFIG = {
     groupStage: {
         name: 'ГРУППОВОЙ ЭТАП',
         formUrl: 'https://forms.gle/BSs7kmQRiZJGuVEW7',
-        statsUrl: 'https://script.google.com/macros/s/AKfycbzdQ0friutyzr7LPomy5n_za0fJmCzSDIHuF0ZeD5JNfWFtCxNMD7Cn3IQD6QwyMlhCOQ/exec',
+        statsUrl: 'https://script.google.com/macros/s/AKfycbwSvu36ZCD8snThHEytxqO3syBayYH3vhkZFlDdubNJCtdyE0UUZqPFAbT8hNRu3RSLlQ/exec',
         startDate: null,
         endDate: null,
         votingActive: false,
@@ -8459,7 +8511,7 @@ const PREDICTION_CONFIG = {
     playoffs: {
         name: 'ПЛЕЙ-ОФФ',
         formUrl: 'https://forms.gle/YSHmkeW6NWunxxih8',
-        statsUrl: 'https://script.google.com/macros/s/AKfycbz3LfpD3AtJ402NnamjuPjqf7NHDfd6vdF-RDt7YON_nmGnN3nazd-PlyxJ6cH-f3Iv0A/exec',
+        statsUrl: 'https://script.google.com/macros/s/AKfycbyx8WdIQB-6_lI6ylKhxXtsOxyX01CjbEOKnB0nyxAeOZ8O6b-zLIV3ZO5RhlpqjTiAmA/exec',
         startDate: null,
         endDate: null,
         votingActive: false,
@@ -8471,7 +8523,7 @@ const PREDICTION_CONFIG = {
     grandFinal: {
         name: 'ГРАНД-ФИНАЛ',
         formUrl: 'https://forms.gle/BYMY5vYjhe482FQP6',
-        statsUrl: 'https://script.google.com/macros/s/AKfycbyysUkBxCKu6nTQ2gL0fYDsoX69XlROTxaB-papw7SniUvPscaYLSYSh5A-MubTesRL1Q/exec',
+        statsUrl: 'https://script.google.com/macros/s/AKfycbw2mZ1vXtH_XzTTH2Ys53Hln1m4Ouwc7HgOwYfxmjR-P1bOSO3KzMUsGgJsuzCS_OnD4w/exec',
         startDate: null,
         endDate: null,
         votingActive: false,
@@ -9623,6 +9675,8 @@ async function backgroundLoadAllPredictions() {
             .then(data => {
                 if (data && data.success) {
                     console.log(`Background loaded ${key}`);
+                } else {
+                    console.warn(`Background load ${key} failed:`, data?.error || 'Unknown error');
                 }
             })
             .catch(error => console.error(`Background load error for ${key}:`, error));
