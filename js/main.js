@@ -2528,18 +2528,6 @@ async function checkForUpdates() {
     try {
         isUpdating = true;
         
-        // Проверяем кеш — если он свежий (менее 2 минут), пропускаем
-        const cached = getCachedData();
-        if (cached) {
-            const age = Date.now() - cached.timestamp;
-            if (age < 120000) { // 2 минуты
-                console.log(`📦 Кеш свежий (${Math.round(age / 1000)}с), пропускаем запрос`);
-                isUpdating = false;
-                return;
-            }
-        }
-        
-        // Легкий запрос на проверку изменений
         console.log('🔍 Проверяем изменения...');
         const response = await fetch(`${SCRIPT_URL}?action=getLastUpdate`);
         const data = await response.json();
@@ -2551,19 +2539,17 @@ async function checkForUpdates() {
                 console.log('🔄 Данные изменились! Загружаем обновления...');
                 showToast(t('data_tournament_updated'), 'info', t('update'), 30000);
                 
-                // Очищаем кеш перед загрузкой новых данных
                 localStorage.removeItem(CACHE_KEY);
                 localStorage.removeItem('last_update_hash');
                 
-                // ========== ЗАГРУЖАЕМ ДАННЫЕ БЕЗ СПИННЕРА ==========
                 await loadAllDataWithCache(false);
                 
-                // Обновляем хеш
                 lastKnownUpdate = currentHash;
+                window.lastKnownUpdate = currentHash;
                 console.log('✅ Данные обновлены, новый хеш:', currentHash);
             } else if (!lastKnownUpdate) {
-                // Первый запуск
                 lastKnownUpdate = currentHash;
+                window.lastKnownUpdate = currentHash;
                 console.log('✅ Начальный хеш сохранен:', currentHash);
             } else {
                 console.log('✅ Изменений нет');
@@ -2590,26 +2576,29 @@ function initAutoRefresh() {
     console.log('🚀 Auto-refresh запущен для зрителей (интервал: 30 секунд, только активная вкладка)');
     console.log('📊 Отслеживаем изменения в: Groups, Playoffs, GroupTeams (MVP)');
 
+    window.autoRefreshInterval = autoRefreshInterval;
+    window.isAdmin = isAdmin;
+    window.isPageVisible = isPageVisible;
+
     try {
         const savedHash = localStorage.getItem('last_update_hash');
         if (savedHash) {
             lastKnownUpdate = savedHash;
+            window.lastKnownUpdate = savedHash;
             console.log('📦 Загружен сохраненный хеш:', lastKnownUpdate);
         }
     } catch(e) {}
 
+    // Проверяем кеш при первом запуске
     setTimeout(() => {
         const cached = getCachedData();
         if (cached) {
-            const age = Date.now() - cached.timestamp;
-            console.log(`📦 Кеш существует, возраст: ${Math.round(age / 1000)}с`);
-            if (age > 120000) {
-                console.log('⏰ Кеш устарел, проверяем обновления...');
-                checkForUpdates();
-            }
+            console.log(`📦 Кеш существует, возраст: ${Math.round((Date.now() - cached.timestamp) / 1000)}с`);
+            // ========== ВСЕГДА ПРОВЕРЯЕМ ОБНОВЛЕНИЯ ==========
+            console.log('🔍 Проверяем обновления при старте...');
+            checkForUpdates();
         } else {
             console.log('📦 Кеша нет, загружаем данные...');
-            // ========== ЗДЕСЬ МЕНЯЕМ: showLoader = false ==========
             loadAllDataWithCache(false).then(() => {
                 setTimeout(() => {
                     checkForUpdates();
