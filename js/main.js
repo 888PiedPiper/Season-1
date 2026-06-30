@@ -1,8 +1,8 @@
 // ==================== НАСТРОЙКИ ====================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxOC2mKZqe1Wmifm0uB29V3dvn4tMaYDvHOiLSQQwBH--4l5O-pkNgme7HiqkFnPu4i/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxrtnDLZa2h7_PLqq061erVo34uw-Org_DxMYjwZGlTztq2nCfHt3Mnb2BdBdSaSuO-/exec';
 const SHEET_ID = '1CeJjGHytehxVIxSxY_j_mx84EvGzKJNA5x9y9n-MSBs';
 const API_KEY = 'AIzaSyCB_5jPpU-GtKmmzx8FTTu33WtbNntxGvg';
-const TEAM_ROSTERS_URL = 'https://script.google.com/macros/s/AKfycbwQyOUSadRrBHhV9ijzvsvergxCJHs8Ntgrt2OuVZv7OZgnjI1Qy6ZvDh5ppJPNtxJjQw/exec';
+const TEAM_ROSTERS_URL = 'https://script.google.com/macros/s/AKfycbwv0BDy61n6t7Cmlvg9pVusvSwLnTNNkIVhcBsxknzGXnAgW4YrM5Eg7eQtCAukQ4ju/exec';
 
 // ==================== КЕШИРОВАНИЕ ====================
 const CACHE_KEY = 'tournament_cache';
@@ -8185,7 +8185,7 @@ const PREDICTION_CONFIG = {
     arenaVotes: {
         name: 'АРЕНА ГОЛОСОВ',
         formUrl: 'https://forms.gle/oMh9MqKGt5KMNURdA',
-        statsUrl: 'https://script.google.com/macros/s/AKfycbxxTFgq1hoeJj0w2PYqJBT5IMBpIaYKCgcXvHg_1WQAVT8XV4OyX2aG9S0bk6r7vZ1Oag/exec',
+        statsUrl: 'https://script.google.com/macros/s/AKfycbwM7qaHzB8iiql_dVcSJ7e7l49H7hDb2AemV942S32KlkbNfIfcnrUQjgufL9tp_wpxXg/exec',
         startDate: null,
         endDate: null,
         votingActive: false,
@@ -8196,7 +8196,7 @@ const PREDICTION_CONFIG = {
     groupStage: {
         name: 'ГРУППОВОЙ ЭТАП',
         formUrl: 'https://forms.gle/BSs7kmQRiZJGuVEW7',
-        statsUrl: 'https://script.google.com/macros/s/AKfycbwaOVHGo_MnTlarIhYxl1QuptcOuArJ-mpoVNZrUuAi2jj_6ob6SPDKla6eXyRGkO4TVA/exec',
+        statsUrl: 'https://script.google.com/macros/s/AKfycbw1bwF_JJT63aE1WSglyjMvnMYe9KyhRuKVBBugEHjBard7UFmTWYW60miAvpDrFHmmXg/exec',
         startDate: null,
         endDate: null,
         votingActive: false,
@@ -8220,7 +8220,7 @@ const PREDICTION_CONFIG = {
     grandFinal: {
         name: 'ГРАНД-ФИНАЛ',
         formUrl: 'https://forms.gle/BYMY5vYjhe482FQP6',
-        statsUrl: 'https://script.google.com/macros/s/AKfycbyYP4jReEfdVskDI5W1rxtNTFQKo9UhYUM0fzDg0YGvdT-ZKNQMQe3R0dOiBH_NM4Mw2g/exec',
+        statsUrl: 'https://script.google.com/macros/s/AKfycbyvUe3yFMxUhZYV_XJFFLAd0yochKujKhIsdY5HPxEGTsSmrkNsEoUGt0uQLEex3EYigQ/exec',
         startDate: null,
         endDate: null,
         votingActive: false,
