@@ -6,7 +6,20 @@ const TEAM_ROSTERS_URL = 'https://script.google.com/macros/s/AKfycbwv0BDy61n6t7C
 
 // ==================== КЕШИРОВАНИЕ ====================
 const CACHE_KEY = 'tournament_cache';
-const CACHE_DURATION_USER = 5 * 60 * 1000; // 5 минут, не ПРОЕБАТЬ!
+// Увеличиваем время кеша для зрителей до 15 минут
+const CACHE_DURATION_USER = 15 * 60 * 1000; // 15 минут
+// Ключ для кеша составов команд
+const TEAM_ROSTERS_CACHE_KEY = 'team_rosters_cache';
+// Время жизни кеша составов - 1 час
+const TEAM_ROSTERS_CACHE_DURATION = 60 * 60 * 1000; // 1 час
+// Ключ для кеша прогнозов
+const PREDICTION_CACHE_KEY = 'prediction_cache';
+// Время жизни кеша прогнозов - 15 минут
+const PREDICTION_CACHE_DURATION = 15 * 60 * 1000; // 15 минут
+// Ключ для кеша регламента
+const RULES_CACHE_KEY = 'rules_cache';
+// Время жизни кеша регламента - 1 час (регламент меняется редко)
+const RULES_CACHE_DURATION = 60 * 60 * 1000; // 1 час
 let isAdmin = false;
 
 // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
@@ -2032,8 +2045,16 @@ async function saveAllDataToGoogle() {
         updatePrizesButtonColor();
         updateScheduleButtonColor();
         
-        // Очищаем кеш прогнозов
-        localStorage.removeItem('prediction_cache');
+        // ========== ОЧИЩАЕМ ВСЕ КЕШИ ПОСЛЕ СОХРАНЕНИЯ ==========
+        try {
+            localStorage.removeItem(CACHE_KEY);
+            localStorage.removeItem('prediction_cache');
+            localStorage.removeItem(TEAM_ROSTERS_CACHE_KEY);
+            localStorage.removeItem(RULES_CACHE_KEY);
+            console.log('All caches cleared after saving to Google');
+        } catch(e) {
+            console.warn('Failed to clear caches:', e);
+        }
         
         // Убираем подсветку у всех кнопок
         document.querySelectorAll('.match-update-btn.has-changes').forEach(btn => {
@@ -5976,10 +5997,21 @@ async function fullResetTournament() {
     if (confirm(t('confirm_full_reset'))) {
         showStatus('status_full_reset', 'success');
         
-        // ========== ОЧИЩАЕМ РОСТЕРЫ ==========
+        // ========== ОЧИЩАЕМ ВСЕ КЕШИ ==========
         window._rosters = null;
         teamRostersCache = null;
         teamTotalPowerCache = {};
+        
+        // Очищаем все localStorage кеши
+        try {
+            localStorage.removeItem(CACHE_KEY);
+            localStorage.removeItem('prediction_cache');
+            localStorage.removeItem(TEAM_ROSTERS_CACHE_KEY);
+            localStorage.removeItem(RULES_CACHE_KEY);
+            console.log('All caches cleared on full reset');
+        } catch(e) {
+            console.warn('Failed to clear caches:', e);
+        }
         
         // Останавливаем все интервалы перед сбросом
         stopAllTimers();
@@ -6930,16 +6962,16 @@ function exitAdminMode() {
 
 function performExitActions() {
     playSound('click');
-
     stopAllTimers();
-
     isAdmin = false;
 
-    // Очищаем кеш при выходе из админ-режима
+    // Очищаем все кеши при выходе из админ-режима
     try {
         localStorage.removeItem(CACHE_KEY);
         localStorage.removeItem('prediction_cache');
-        console.log('Cache cleared on admin exit');
+        localStorage.removeItem(TEAM_ROSTERS_CACHE_KEY);
+        localStorage.removeItem(RULES_CACHE_KEY);
+        console.log('All caches cleared on admin exit');
     } catch(e) {
         console.warn('Failed to clear cache:', e);
     }
@@ -6965,7 +6997,7 @@ function performExitActions() {
     startCountdownTimer();
     startFabWaitingAnimation();
 
-    // ========== ВКЛЮЧАЕМ АВТО-ОБНОВЛЕНИЕ ДЛЯ ЗРИТЕЛЕЙ ==========
+    // Включаем авто-обновление для зрителей
     initAutoRefresh();
 
     showStatus('status_exit_admin', 'success');
@@ -6992,17 +7024,78 @@ function updateUTCTime() {
 
 let rulesData = [];
 
-async function loadRules() {
+async function loadRules(forceRefresh = false) {
+    // Если не админ и не принудительное обновление - проверяем кеш
+    if (!isAdmin && !forceRefresh) {
+        try {
+            const cached = localStorage.getItem(RULES_CACHE_KEY);
+            if (cached) {
+                const data = JSON.parse(cached);
+                if (data && data.timestamp && data.data) {
+                    // Проверяем, не истекло ли время
+                    if ((Date.now() - data.timestamp) < RULES_CACHE_DURATION) {
+                        console.log('Rules loaded from cache');
+                        rulesData = data.data;
+                        renderRulesModal();
+                        return;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Error reading rules cache:', e);
+        }
+    }
+
+    // Загружаем с сервера
     try {
+        console.log('Loading rules from server...');
         const response = await fetch(`${SCRIPT_URL}?action=getRules`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
         
         if (data.success && data.rules) {
             rulesData = data.rules;
+            
+            // Сохраняем в кеш (только для зрителей)
+            if (!isAdmin) {
+                try {
+                    localStorage.setItem(RULES_CACHE_KEY, JSON.stringify({
+                        timestamp: Date.now(),
+                        data: data.rules
+                    }));
+                    console.log('Rules saved to cache');
+                } catch (e) {
+                    console.warn('Error saving rules to cache:', e);
+                }
+            }
+            
             renderRulesModal();
+        } else {
+            throw new Error('Invalid response structure');
         }
     } catch (error) {
         console.error('Load rules error:', error);
+        
+        // Если есть кеш даже просроченный - используем как fallback
+        try {
+            const fallbackCache = localStorage.getItem(RULES_CACHE_KEY);
+            if (fallbackCache) {
+                const data = JSON.parse(fallbackCache);
+                if (data && data.data) {
+                    console.log('Using expired cache as fallback');
+                    rulesData = data.data;
+                    renderRulesModal();
+                    return;
+                }
+            }
+        } catch (fallbackError) {
+            // Игнорируем
+        }
+        
         const modalBody = document.getElementById('rules-modal-body');
         if (modalBody) {
             modalBody.innerHTML = `<div style="text-align: center; padding: 2rem; color: #888888;">${t('rules_load_error')}</div>`;
@@ -7373,6 +7466,18 @@ async function saveRulesToSheet() {
             rulesData = updatedRules;
             renderRulesAdminPanel();
             showRulesStatus(t('rules_saved'), 'success');
+            
+            // ========== ОБНОВЛЯЕМ КЕШ РЕГЛАМЕНТА ПОСЛЕ СОХРАНЕНИЯ ==========
+            // Сохраняем обновленный регламент в кеш (для зрителей)
+            try {
+                localStorage.setItem(RULES_CACHE_KEY, JSON.stringify({
+                    timestamp: Date.now(),
+                    data: updatedRules
+                }));
+                console.log('Rules cache updated after save');
+            } catch (e) {
+                console.warn('Error updating rules cache:', e);
+            }
         } else {
             showRulesStatus(t('status_error'), 'error');
         }
@@ -7411,6 +7516,17 @@ async function resetRulesToDefault() {
                 rulesData = defaultRules;
                 renderRulesAdminPanel();
                 showRulesStatus(t('rules_reset_done'), 'success');
+                
+                // ========== ОБНОВЛЯЕМ КЕШ РЕГЛАМЕНТА ПОСЛЕ СБРОСА ==========
+                try {
+                    localStorage.setItem(RULES_CACHE_KEY, JSON.stringify({
+                        timestamp: Date.now(),
+                        data: defaultRules
+                    }));
+                    console.log('Rules cache updated after reset');
+                } catch (e) {
+                    console.warn('Error updating rules cache:', e);
+                }
             } else {
                 showRulesStatus(t('status_error'), 'error');
             }
@@ -7853,42 +7969,34 @@ async function initTrophy2026() {
 }
 
 // Открытие модального окна
-function openTrophy2026Modal() {
+window.openTrophy2026Modal = function() {
     const modal = document.getElementById('trophy2026-modal');
     if (modal) {
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
-        
         if (!trophy2026Renderer) {
-            // Просто вызываем инициализацию, без глобального лоадера
             initTrophy2026();
         }
     }
-}
+};
 
-function closeTrophy2026Modal() {
+window.closeTrophy2026Modal = function() {
     const modal = document.getElementById('trophy2026-modal');
     if (modal) {
         modal.style.display = 'none';
         document.body.style.overflow = '';
-        
-        // Очищаем Three.js ресурсы
         if (trophy2026Renderer) {
             trophy2026Renderer.dispose();
             trophy2026Renderer = null;
         }
-        if (trophy2026Scene) {
-            trophy2026Scene = null;
-        }
+        trophy2026Scene = null;
         if (trophy2026Controls) {
             trophy2026Controls.dispose();
             trophy2026Controls = null;
         }
-        if (trophy2026Model) {
-            trophy2026Model = null;
-        }
+        trophy2026Model = null;
     }
-}
+};
 
 // ==================== 3D ТРОФЕЙ ====================
 
@@ -8156,13 +8264,12 @@ async function initTrophy3D() {
     }
 }
 
-function openTrophyModal() {
+window.openTrophyModal = function() {
     const modal = document.getElementById('trophy-modal');
     if (modal) {
         updateTrophyModalContent();
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
-        
         setTimeout(() => {
             const avatar = document.querySelector('.trophy-champion-avatar .team-avatar');
             if (avatar) {
@@ -8172,11 +8279,155 @@ function openTrophyModal() {
                 }, 50);
             }
         }, 100);
-        
         if (!trophyRenderer) {
-            // Просто вызываем инициализацию, без глобального лоадера
             initTrophy3D();
         }
+    }
+};
+
+// ==================== КЕШ ДЛЯ ПРОГНОЗОВ ====================
+
+// Получение всего кеша
+function getPredictionCache() {
+    try {
+        const cached = localStorage.getItem(PREDICTION_CACHE_KEY);
+        return cached ? JSON.parse(cached) : {};
+    } catch(e) {
+        console.warn('Error reading prediction cache:', e);
+        return {};
+    }
+}
+
+// Получение данных из кеша
+function getPredictionFromCache(key) {
+    try {
+        const cache = getPredictionCache();
+        const item = cache[key];
+        if (item && (Date.now() - item.timestamp) < PREDICTION_CACHE_DURATION) {
+            console.log(`Cache hit for ${key}`);
+            return item.data;
+        }
+        if (item) {
+            console.log(`Cache expired for ${key}`);
+        } else {
+            console.log(`Cache miss for ${key}`);
+        }
+        return null;
+    } catch(e) {
+        console.warn('Error reading from prediction cache:', e);
+        return null;
+    }
+}
+
+// Сохранение данных в кеш
+function savePredictionToCache(key, data) {
+    try {
+        const cache = getPredictionCache();
+        cache[key] = {
+            timestamp: Date.now(),
+            data: data
+        };
+        localStorage.setItem(PREDICTION_CACHE_KEY, JSON.stringify(cache));
+        console.log(`Saved to prediction cache: ${key}`);
+    } catch(e) {
+        console.warn('Save to prediction cache error:', e);
+    }
+}
+
+// Очистка кеша прогнозов
+function clearPredictionCache() {
+    try {
+        localStorage.removeItem(PREDICTION_CACHE_KEY);
+        console.log('Prediction cache cleared');
+    } catch(e) {
+        console.warn('Failed to clear prediction cache:', e);
+    }
+}
+
+// Универсальная функция загрузки данных прогнозов с кешем (использует JSONP)
+async function loadPredictionDataWithCache(stageKey, stage, forceRefresh = false) {
+    if (!stage || !stage.statsUrl || stage.statsUrl === '#') {
+        return { success: false, error: 'No stats URL' };
+    }
+    
+    // Проверяем кеш (если не админ и не принудительное обновление)
+    if (!isAdmin && !forceRefresh) {
+        const cached = getPredictionFromCache(stageKey);
+        if (cached) {
+            console.log(`Loaded ${stageKey} from cache`);
+            return cached;
+        }
+    }
+    
+    try {
+        console.log(`Loading ${stageKey} via JSONP...`);
+        
+        // Используем JSONP вместо fetch
+        const data = await new Promise((resolve, reject) => {
+            const callbackName = `jsonp_callback_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+            
+            const timeoutId = setTimeout(() => {
+                cleanup();
+                reject(new Error('JSONP request timeout'));
+            }, 15000);
+            
+            function cleanup() {
+                if (window[callbackName]) {
+                    delete window[callbackName];
+                }
+                const script = document.querySelector(`script[data-callback="${callbackName}"]`);
+                if (script && script.parentNode) {
+                    script.parentNode.removeChild(script);
+                }
+                clearTimeout(timeoutId);
+            }
+            
+            window[callbackName] = function(data) {
+                cleanup();
+                resolve(data);
+            };
+            
+            const script = document.createElement('script');
+            script.setAttribute('data-callback', callbackName);
+            script.src = `${stage.statsUrl}?action=getStats&callback=${callbackName}`;
+            script.onerror = function() {
+                cleanup();
+                reject(new Error('JSONP script load error'));
+            };
+            
+            document.body.appendChild(script);
+        });
+        
+        if (data && data.success) {
+            // Сохраняем в кеш (только для зрителей)
+            if (!isAdmin) {
+                savePredictionToCache(stageKey, data);
+                console.log(`Saved ${stageKey} to cache`);
+            }
+            return data;
+        } else {
+            console.warn(`Invalid data for ${stageKey}:`, data);
+            
+            // Если есть кеш даже просроченный - используем как fallback
+            const cached = getPredictionFromCache(stageKey);
+            if (cached) {
+                console.log(`Using expired cache as fallback for ${stageKey}`);
+                return cached;
+            }
+            
+            return { success: false, error: 'Invalid data' };
+        }
+    } catch (error) {
+        console.error(`Error loading ${stageKey}:`, error);
+        
+        // Если есть кеш даже просроченный - используем как fallback
+        const cached = getPredictionFromCache(stageKey);
+        if (cached) {
+            console.log(`Using expired cache as fallback for ${stageKey}`);
+            return cached;
+        }
+        
+        return { success: false, error: error.message };
     }
 }
 
@@ -8185,7 +8436,7 @@ const PREDICTION_CONFIG = {
     arenaVotes: {
         name: 'АРЕНА ГОЛОСОВ',
         formUrl: 'https://forms.gle/oMh9MqKGt5KMNURdA',
-        statsUrl: 'https://script.google.com/macros/s/AKfycbwM7qaHzB8iiql_dVcSJ7e7l49H7hDb2AemV942S32KlkbNfIfcnrUQjgufL9tp_wpxXg/exec',
+        statsUrl: 'https://script.google.com/macros/s/AKfycbx_YYazGZSouMe7G0lSSLSSvLFHgu6YsI8CPg0CvVMnIK5oI7JM64uonFparvx5qckqlA/exec',
         startDate: null,
         endDate: null,
         votingActive: false,
@@ -8196,7 +8447,7 @@ const PREDICTION_CONFIG = {
     groupStage: {
         name: 'ГРУППОВОЙ ЭТАП',
         formUrl: 'https://forms.gle/BSs7kmQRiZJGuVEW7',
-        statsUrl: 'https://script.google.com/macros/s/AKfycbw1bwF_JJT63aE1WSglyjMvnMYe9KyhRuKVBBugEHjBard7UFmTWYW60miAvpDrFHmmXg/exec',
+        statsUrl: 'https://script.google.com/macros/s/AKfycbzdQ0friutyzr7LPomy5n_za0fJmCzSDIHuF0ZeD5JNfWFtCxNMD7Cn3IQD6QwyMlhCOQ/exec',
         startDate: null,
         endDate: null,
         votingActive: false,
@@ -8208,7 +8459,7 @@ const PREDICTION_CONFIG = {
     playoffs: {
         name: 'ПЛЕЙ-ОФФ',
         formUrl: 'https://forms.gle/YSHmkeW6NWunxxih8',
-        statsUrl: 'https://script.google.com/macros/s/AKfycbzLa1t2z-GRmRW-wdlWkNjDTmiOTV2ZP90sZCB8xYQS-G5Hpr8oqBbvpAH8_bQHOIVASw/exec',
+        statsUrl: 'https://script.google.com/macros/s/AKfycbz3LfpD3AtJ402NnamjuPjqf7NHDfd6vdF-RDt7YON_nmGnN3nazd-PlyxJ6cH-f3Iv0A/exec',
         startDate: null,
         endDate: null,
         votingActive: false,
@@ -8220,7 +8471,7 @@ const PREDICTION_CONFIG = {
     grandFinal: {
         name: 'ГРАНД-ФИНАЛ',
         formUrl: 'https://forms.gle/BYMY5vYjhe482FQP6',
-        statsUrl: 'https://script.google.com/macros/s/AKfycbyvUe3yFMxUhZYV_XJFFLAd0yochKujKhIsdY5HPxEGTsSmrkNsEoUGt0uQLEex3EYigQ/exec',
+        statsUrl: 'https://script.google.com/macros/s/AKfycbyysUkBxCKu6nTQ2gL0fYDsoX69XlROTxaB-papw7SniUvPscaYLSYSh5A-MubTesRL1Q/exec',
         startDate: null,
         endDate: null,
         votingActive: false,
@@ -8592,9 +8843,8 @@ async function resetPredictionsData() {
             PREDICTION_CONFIG.grandFinal.rankingVisible = false;
         }
 
-        // Очищаем кеш прогнозов (все ключи)
-        localStorage.removeItem('predictions_cache');
-        localStorage.removeItem('prediction_cache');
+        // Очищаем кеш прогнозов
+        clearPredictionCache(); // Используем новую функцию
         
         // Сбрасываем глобальные переменные прогнозов
         if (typeof teamRostersCache !== 'undefined') {
@@ -9351,70 +9601,28 @@ function initRankingsSearch() {
 
 }
 
-// ==================== КЕШ ДЛЯ ПРОГНОЗОВ ====================
-const PREDICTION_CACHE_KEY = 'prediction_cache';
-const CACHE_DURATION = 2 * 60 * 1000; // 2 минуты
-
-// Получение всего кеша
-function getPredictionCache() {
-    try {
-        const cached = localStorage.getItem(PREDICTION_CACHE_KEY);
-        return cached ? JSON.parse(cached) : {};
-    } catch(e) {
-        return {};
-    }
-}
-
-// Получение данных из кеша
-function getPredictionFromCache(key) {
-    try {
-        const cache = getPredictionCache();
-        const item = cache[key];
-        if (item && (Date.now() - item.timestamp) < CACHE_DURATION) {
-            console.log(`Cache hit for ${key}`);
-            return item.data;
-        }
-        console.log(`Cache miss for ${key}`);
-        return null;
-    } catch(e) {
-        return null;
-    }
-}
-
-// Сохранение данных в кеш
-function savePredictionToCache(key, data) {
-    try {
-        const cache = getPredictionCache();
-        cache[key] = {
-            timestamp: Date.now(),
-            data: data
-        };
-        localStorage.setItem(PREDICTION_CACHE_KEY, JSON.stringify(cache));
-    } catch(e) {
-        console.error('Save to cache error:', e);
-    }
-}
-
 // Фоновая загрузка всех данных в кеш (только для зрителей)
 async function backgroundLoadAllPredictions() {
     if (isAdmin) return;
-
+    
+    console.log('Background loading predictions...');
     const promises = [];
 
     for (const [key, stage] of Object.entries(PREDICTION_CONFIG)) {
         if (!stage || !stage.statsUrl || stage.statsUrl === '#') continue;
 
+        // Проверяем кеш
         const cached = getPredictionFromCache(key);
         if (cached) {
             console.log(`Already cached for ${key}`);
             continue;
         }
 
-        const promise = fetch(`${stage.statsUrl}?action=getStats`)
-            .then(response => response.json())
+        console.log(`Background loading ${key}...`);
+        const promise = loadPredictionDataWithCache(key, stage)
             .then(data => {
-                if (data.success) {
-                    savePredictionToCache(key, data);
+                if (data && data.success) {
+                    console.log(`Background loaded ${key}`);
                 }
             })
             .catch(error => console.error(`Background load error for ${key}:`, error));
@@ -9422,7 +9630,10 @@ async function backgroundLoadAllPredictions() {
         promises.push(promise);
     }
 
-    await Promise.all(promises);
+    if (promises.length > 0) {
+        await Promise.all(promises);
+        console.log('Background loading complete');
+    }
 }
 
 // Открытие модального окна прогнозов
@@ -9478,16 +9689,7 @@ async function openPredictionModal() {
                 try {
                     let data = null;
                     if (stage.statsUrl && stage.statsUrl !== '') {
-                        if (!isAdmin) {
-                            data = getPredictionFromCache(key);
-                        }
-                        if (!data) {
-                            const response = await fetch(`${stage.statsUrl}?action=getStats`);
-                            data = await response.json();
-                            if (!isAdmin && data.success) {
-                                savePredictionToCache(key, data);
-                            }
-                        }
+                        data = await loadPredictionDataWithCache(key, stage);
                     } else {
                         console.log(`${key} - waiting for Apps Script URL`);
                         data = { success: true, chart: {} };
@@ -9519,18 +9721,7 @@ async function openPredictionModal() {
                 const rankingsContainerId = `prediction-rankings-${key}`;
 
                 try {
-                    let data = null;
-                    if (!isAdmin) {
-                        data = getPredictionFromCache(key);
-                    }
-
-                    if (!data) {
-                        const response = await fetch(`${stage.statsUrl}?action=getStats`);
-                        data = await response.json();
-                        if (!isAdmin && data.success) {
-                            savePredictionToCache(key, data);
-                        }
-                    }
+                    const data = await loadPredictionDataWithCache(key, stage);
 
                     if (data && data.success) {
 
@@ -9574,18 +9765,7 @@ async function openPredictionModal() {
                 const rankingsContainerId = `prediction-rankings-${key}`;
 
                 try {
-                    let data = null;
-                    if (!isAdmin) {
-                        data = getPredictionFromCache(key);
-                    }
-
-                    if (!data) {
-                        const response = await fetch(`${stage.statsUrl}?action=getStats`);
-                        data = await response.json();
-                        if (!isAdmin && data.success) {
-                            savePredictionToCache(key, data);
-                        }
-                    }
+                    const data = await loadPredictionDataWithCache(key, stage);
 
                     if (data && data.success) {
 
@@ -9629,18 +9809,7 @@ async function openPredictionModal() {
                 const rankingsContainerId = `prediction-rankings-${key}`;
                 
                 try {
-                    let data = null;
-                    if (!isAdmin) {
-                        data = getPredictionFromCache(key);
-                    }
-                    
-                    if (!data) {
-                        const response = await fetch(`${stage.statsUrl}?action=getStats`);
-                        data = await response.json();
-                        if (!isAdmin && data.success) {
-                            savePredictionToCache(key, data);
-                        }
-                    }
+                    const data = await loadPredictionDataWithCache(key, stage);
                     
                     if (data && data.success) {
                         
@@ -9808,14 +9977,14 @@ let arenaRaceAnimationTimer = null;
 let arenaRaceData = null;
 let arenaRaceIsAnimating = false;
 
-// Получение данных для гонки
+// Получение данных для гонки (использует JSONP)
 async function fetchArenaRaceData() {
     try {
         const arenaStage = PREDICTION_CONFIG.arenaVotes;
         if (!arenaStage || !arenaStage.statsUrl) return null;
         
-        const response = await fetch(`${arenaStage.statsUrl}?action=getStats`);
-        const data = await response.json();
+        // Используем ту же функцию с JSONP
+        const data = await loadPredictionDataWithCache('arenaVotes', arenaStage);
         
         if (data && data.success && data.chart) {
             arenaRaceData = data.chart;
@@ -10089,37 +10258,93 @@ window.addEventListener('unhandledrejection', function(event) {
 // ==================== РАБОТА С СОСТАВАМИ КОМАНД ====================
 
 async function loadTeamRosters() {
-    
-    // Проверяем кеш
-    if (teamRostersCache && (Date.now() - teamRostersCache.timestamp) < 1200000) {
-        return teamRostersCache.data;
-    }
-    
+    // Сначала проверяем localStorage
     try {
+        const cached = localStorage.getItem(TEAM_ROSTERS_CACHE_KEY);
+        if (cached) {
+            const data = JSON.parse(cached);
+            // Проверяем структуру данных
+            if (data && data.timestamp && data.data && typeof data.data === 'object') {
+                if ((Date.now() - data.timestamp) < TEAM_ROSTERS_CACHE_DURATION) {
+                    console.log('Team rosters loaded from localStorage');
+                    const rosters = data.data;
+                    teamRostersCache = { timestamp: data.timestamp, data: rosters };
+                    window._rosters = rosters;
+                    calculateTotalPowers(rosters);
+                    updateTournamentDataWithMVP(rosters);
+                    return rosters;
+                }
+            } else {
+                console.warn('Invalid cache structure, removing...');
+                localStorage.removeItem(TEAM_ROSTERS_CACHE_KEY);
+            }
+        }
+    } catch (e) {
+        console.warn('Error reading team rosters cache:', e);
+        // Если кеш поврежден, удаляем его
+        try {
+            localStorage.removeItem(TEAM_ROSTERS_CACHE_KEY);
+        } catch(removeError) {
+            // Игнорируем ошибку удаления
+        }
+    }
+
+    // Если в кеше нет или он устарел, грузим с сервера
+    try {
+        console.log('Loading team rosters from server...');
         const response = await fetch(`${TEAM_ROSTERS_URL}?action=getTeamRosters`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
         
-        if (data.success && data.rosters) {
+        if (data.success && data.rosters && typeof data.rosters === 'object') {
+            // Сохраняем в глобальную переменную для быстрого доступа
+            window._rosters = data.rosters;
             
+            // Сохраняем в localStorage
+            try {
+                localStorage.setItem(TEAM_ROSTERS_CACHE_KEY, JSON.stringify({
+                    timestamp: Date.now(),
+                    data: data.rosters
+                }));
+            } catch (e) {
+                console.warn('Error saving team rosters to localStorage:', e);
+            }
+            
+            // Сохраняем в переменную для обратной совместимости
             teamRostersCache = {
                 timestamp: Date.now(),
                 data: data.rosters
             };
             
-            // Сохраняем в глобальную переменную для быстрого доступа
-            window._rosters = data.rosters;
-            
             calculateTotalPowers(data.rosters);
-            
-            // Обновляем tournamentData с MVP для групп
             updateTournamentDataWithMVP(data.rosters);
-            
             return data.rosters;
+        } else {
+            console.warn('Invalid response structure:', data);
+            return null;
         }
     } catch (error) {
         console.error('loadTeamRosters error:', error);
+        // Если есть старый кеш, но он просрочен, используем его как fallback
+        try {
+            const fallbackCache = localStorage.getItem(TEAM_ROSTERS_CACHE_KEY);
+            if (fallbackCache) {
+                const data = JSON.parse(fallbackCache);
+                if (data && data.data) {
+                    console.log('Using expired cache as fallback');
+                    window._rosters = data.data;
+                    return data.data;
+                }
+            }
+        } catch(fallbackError) {
+            // Игнорируем
+        }
+        return null;
     }
-    return null;
 }
 
 function updateTournamentDataWithMVP(rosters) {
