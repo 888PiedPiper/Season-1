@@ -8185,7 +8185,7 @@ const PREDICTION_CONFIG = {
     arenaVotes: {
         name: 'АРЕНА ГОЛОСОВ',
         formUrl: 'https://forms.gle/oMh9MqKGt5KMNURdA',
-        statsUrl: 'https://script.google.com/macros/s/AKfycbyQTQQkH3HtohlbvCgEbOci0t43NJsXd51dYhLuyfNNJXmODAkKSAdwJltNUTaWiwtFWQ/exec',
+        statsUrl: 'https://script.google.com/macros/s/AKfycbxxTFgq1hoeJj0w2PYqJBT5IMBpIaYKCgcXvHg_1WQAVT8XV4OyX2aG9S0bk6r7vZ1Oag/exec',
         startDate: null,
         endDate: null,
         votingActive: false,
@@ -8196,7 +8196,7 @@ const PREDICTION_CONFIG = {
     groupStage: {
         name: 'ГРУППОВОЙ ЭТАП',
         formUrl: 'https://forms.gle/BSs7kmQRiZJGuVEW7',
-        statsUrl: 'https://script.google.com/macros/s/AKfycbz59oaYhpeDFrsextaRFj12D5Hc6NNXOOw8w_Q0rD-f7KgH_XGx5qcLT1v6zhF_sqF-ZA/exec',
+        statsUrl: 'https://script.google.com/macros/s/AKfycbwaOVHGo_MnTlarIhYxl1QuptcOuArJ-mpoVNZrUuAi2jj_6ob6SPDKla6eXyRGkO4TVA/exec',
         startDate: null,
         endDate: null,
         votingActive: false,
@@ -8208,7 +8208,7 @@ const PREDICTION_CONFIG = {
     playoffs: {
         name: 'ПЛЕЙ-ОФФ',
         formUrl: 'https://forms.gle/YSHmkeW6NWunxxih8',
-        statsUrl: 'https://script.google.com/macros/s/AKfycbwYiSiTdOGJMKO4BvhnjZLIU51OpoD1D3jJ_JaHbWSQPYV0dzALyyiWsUB-GdV2NLdWTQ/exec',
+        statsUrl: 'https://script.google.com/macros/s/AKfycbzLa1t2z-GRmRW-wdlWkNjDTmiOTV2ZP90sZCB8xYQS-G5Hpr8oqBbvpAH8_bQHOIVASw/exec',
         startDate: null,
         endDate: null,
         votingActive: false,
@@ -8220,7 +8220,7 @@ const PREDICTION_CONFIG = {
     grandFinal: {
         name: 'ГРАНД-ФИНАЛ',
         formUrl: 'https://forms.gle/BYMY5vYjhe482FQP6',
-        statsUrl: 'https://script.google.com/macros/s/AKfycbxo6IOvegUQhSokE5hI8mrdRlBl3Rxl84pQI14gD27-0GMeg2Xv9RvoApVKRQakJns_Vg/exec',
+        statsUrl: 'https://script.google.com/macros/s/AKfycbyYP4jReEfdVskDI5W1rxtNTFQKo9UhYUM0fzDg0YGvdT-ZKNQMQe3R0dOiBH_NM4Mw2g/exec',
         startDate: null,
         endDate: null,
         votingActive: false,
