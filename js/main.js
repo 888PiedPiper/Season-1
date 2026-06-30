@@ -2528,6 +2528,18 @@ async function checkForUpdates() {
     try {
         isUpdating = true;
         
+        // Проверяем кеш — если он свежий (менее 2 минут), пропускаем
+        const cached = getCachedData();
+        if (cached) {
+            const age = Date.now() - cached.timestamp;
+            if (age < 120000) { // 2 минуты
+                console.log(`📦 Кеш свежий (${Math.round(age / 1000)}с), пропускаем запрос`);
+                isUpdating = false;
+                return;
+            }
+        }
+        
+        // Легкий запрос на проверку изменений
         console.log('🔍 Проверяем изменения...');
         const response = await fetch(`${SCRIPT_URL}?action=getLastUpdate`);
         const data = await response.json();
@@ -2539,10 +2551,30 @@ async function checkForUpdates() {
                 console.log('🔄 Данные изменились! Загружаем обновления...');
                 showToast(t('data_tournament_updated'), 'info', t('update'), 30000);
                 
+                // ========== ОЧИЩАЕМ ВСЕ КЕШИ ==========
                 localStorage.removeItem(CACHE_KEY);
                 localStorage.removeItem('last_update_hash');
+                localStorage.removeItem(TEAM_ROSTERS_CACHE_KEY); // ← ОЧИЩАЕМ КЕШ СОСТАВОВ
+                localStorage.removeItem('prediction_cache');
+                localStorage.removeItem(RULES_CACHE_KEY);
+                console.log('All caches cleared on update');
                 
+                // Сбрасываем кеш в памяти
+                teamRostersCache = null;
+                window._rosters = null;
+                
+                // Загружаем все данные без спиннера
                 await loadAllDataWithCache(false);
+                
+                // Принудительно загружаем ростера с сервера
+                const rosters = await loadTeamRosters();
+                if (rosters) {
+                    window._rosters = rosters;
+                    calculateTotalPowers(rosters);
+                    renderGroups();
+                    renderPlayoffs();
+                    renderResults();
+                }
                 
                 lastKnownUpdate = currentHash;
                 window.lastKnownUpdate = currentHash;
