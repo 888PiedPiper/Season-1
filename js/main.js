@@ -7743,8 +7743,8 @@ async function initTrophy2026() {
             return new Promise((resolve, reject) => {
                 // Увеличиваем таймаут до 30 секунд
                 const timeout = setTimeout(() => {
-                    reject(new Error('3D model loading timeout (30s)'));
-                }, 30000);
+                    reject(new Error('3D model loading timeout (60s)'));
+                }, 60000);
 
                 setTimeout(() => updateTrophy2026Progress(75), 200);
 
@@ -8045,8 +8045,8 @@ async function initTrophy3D() {
             return new Promise((resolve, reject) => {
                 // Увеличиваем таймаут до 30 секунд
                 const timeout = setTimeout(() => {
-                    reject(new Error('3D model loading timeout (30s)'));
-                }, 30000);
+                    reject(new Error('3D model loading timeout (60s)'));
+                }, 60000);
 
                 setTimeout(() => updateTrophyProgress(75), 200);
 
