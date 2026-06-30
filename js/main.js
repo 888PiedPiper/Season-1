@@ -2528,11 +2528,11 @@ async function checkForUpdates() {
     try {
         isUpdating = true;
         
-        // Проверяем кеш — если он свежий (менее 2 минут), пропускаем
+        // Проверяем кеш — если он свежий (менее 30 секунд), пропускаем
         const cached = getCachedData();
         if (cached) {
             const age = Date.now() - cached.timestamp;
-            if (age < 120000) { // 2 минуты
+            if (age < 30000) { 
                 console.log(`📦 Кеш свежий (${Math.round(age / 1000)}с), пропускаем запрос`);
                 isUpdating = false;
                 return;
