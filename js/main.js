@@ -2047,6 +2047,13 @@ async function saveAllDataToGoogle() {
         
         if (!resultPrizes.success) {
             console.error('Save prizes failed:', resultPrizes.error);
+            showToast('Не удалось сохранить призы', 'error', 'Ошибка');
+        } else {
+            console.log('Prizes saved successfully');
+            // Обновляем локальные данные призов
+            prizeData = currentPrizes;
+            saveOriginalPrizes();
+            updatePrizesButtonColor();
         }
         
         // 3. Сохраняем расписание
@@ -2116,6 +2123,54 @@ async function saveAllDataToGoogle() {
         console.error('Save error:', e);
         showToast(t('error_saving_to_google'), 'error', t('error'));
         playSound('error');
+        return false;
+    }
+}
+
+// ==================== СОХРАНЕНИЕ ПРИЗОВ ОТДЕЛЬНО ====================
+async function savePrizesOnly() {
+    if (!isAdmin) {
+        showStatus('status_admin_required', 'error');
+        playSound('error');
+        return false;
+    }
+    
+    const currentPrizes = {};
+    for (let i = 1; i <= 8; i++) {
+        const input = document.getElementById(`prize-${i}`);
+        if (input) {
+            currentPrizes[i] = input.value.trim();
+        } else {
+            currentPrizes[i] = prizeData[i] || '';
+        }
+    }
+    
+    try {
+        const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                action: 'prizes',
+                data: JSON.stringify(currentPrizes)
+            }).toString()
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            prizeData = currentPrizes;
+            saveOriginalPrizes();
+            updatePrizesButtonColor();
+            showToast('Призы успешно сохранены', 'success', 'Сохранение');
+            renderResults();
+            return true;
+        } else {
+            showToast('Не удалось сохранить призы: ' + (result.error || 'неизвестная ошибка'), 'error', 'Ошибка');
+            return false;
+        }
+    } catch (error) {
+        console.error('Save prizes error:', error);
+        showToast('Ошибка при сохранении призов', 'error', 'Ошибка');
         return false;
     }
 }
