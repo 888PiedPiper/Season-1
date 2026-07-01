@@ -6650,19 +6650,31 @@ async function start() {
         currentLang = savedLang;
     }
     
-    const langBtn = document.getElementById('lang-switch-btn');
-    if (langBtn) {
-        langBtn.textContent = currentLang === 'ru' ? 'EN' : 'RU';
-        langBtn.addEventListener('click', () => {
-            const newLang = currentLang === 'ru' ? 'en' : 'ru';
+    // ========== ТУМБЛЕР ПЕРЕКЛЮЧЕНИЯ ЯЗЫКА ==========
+    const langToggle = document.getElementById('lang-toggle');
+    if (langToggle) {
+        // Устанавливаем начальное состояние
+        const isRussian = currentLang === 'ru';
+        updateLangToggle(isRussian);
+        
+        langToggle.addEventListener('click', () => {
+            const isCurrentlyRussian = currentLang === 'ru';
+            const newLang = isCurrentlyRussian ? 'en' : 'ru';
+            // Анимация нажатия
+            langToggle.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                langToggle.style.transform = 'scale(1)';
+            }, 150);
             setLanguage(newLang);
+            updateLangToggle(newLang === 'ru');
+            playSound('click');
         });
     }
     
     updateAllTexts();
-
+    
     // ========== АНАЛИТИКА: ОТКРЫТИЕ СТРАНИЦЫ ==========
-    trackPageView('Home');    
+    trackPageView('Home');  
     
     // ========== ОПТИМИЗИРОВАННАЯ ЗАГРУЗКА ==========
     // Загружаем ВСЕ данные параллельно для ускорения
@@ -10471,6 +10483,19 @@ setInterval(() => {
 
 setInterval(updateUTCTime, 10000);
 updateUTCTime();
+
+// ==================== ФУНКЦИЯ ДЛЯ ТУМБЛЕРА ЯЗЫКА ====================
+function updateLangToggle(isRussian) {
+    const track = document.querySelector('.lang-toggle-track');
+    const thumb = document.querySelector('.lang-toggle-thumb');
+    const ruLabel = document.querySelector('.lang-toggle-label.ru');
+    const enLabel = document.querySelector('.lang-toggle-label.en');
+    
+    if (track) track.classList.toggle('active', isRussian);
+    if (thumb) thumb.classList.toggle('active', isRussian);
+    if (ruLabel) ruLabel.classList.toggle('active', isRussian);
+    if (enLabel) enLabel.classList.toggle('active', !isRussian);
+}
 
 window.addEventListener('DOMContentLoaded', start);
 
