@@ -29,6 +29,35 @@ const RULES_CACHE_DURATION = 60 * 60 * 1000; // 1 час
 const LAST_UPDATE_KEY = 'last_update_hash';
 let isAdmin = false;
 
+// ==================== АНАЛИТИКА ====================
+const ANALYTICS_ENABLED = true;
+
+function trackEvent(eventName, eventParams = {}) {
+    if (!ANALYTICS_ENABLED) return;
+    try {
+        if (typeof gtag !== 'undefined') {
+            gtag('event', eventName, eventParams);
+            console.log(`📊 Analytics: ${eventName}`, eventParams);
+        }
+    } catch(e) {
+        // Игнорируем ошибки аналитики
+    }
+}
+
+function trackPageView(pageName) {
+    if (!ANALYTICS_ENABLED) return;
+    try {
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'page_view', {
+                page_title: pageName,
+                page_location: window.location.href
+            });
+        }
+    } catch(e) {
+        // Игнорируем
+    }
+}
+
 // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
 let tournamentData = {
     groups: { A: { teams: [], matches: [] }, B: { teams: [], matches: [] } },
@@ -1981,6 +2010,9 @@ function playSound(type) {
 
 // Универсальная функция сохранения всех данных в Google Sheets
 async function saveAllDataToGoogle() {
+    // ========== АНАЛИТИКА ==========
+    trackEvent('data_save', { type: 'all_data' });
+
     if (!isAdmin) {
         showStatus('status_admin_required', 'error');
         playSound('error');
@@ -2603,6 +2635,13 @@ async function checkForUpdates() {
             const currentHash = data.lastUpdate;
             
             if (lastKnownUpdate && lastKnownUpdate !== currentHash) {
+                // ========== АНАЛИТИКА ==========
+                trackEvent('data_updated', { 
+                    source: 'auto_refresh',
+                    old_hash: lastKnownUpdate,
+                    new_hash: currentHash
+                });
+
                 console.log('🔄 Данные изменились! Загружаем обновления...');
                 showToast(t('data_tournament_updated'), 'info', t('update'), 30000);
                 
@@ -6621,6 +6660,9 @@ async function start() {
     }
     
     updateAllTexts();
+
+    // ========== АНАЛИТИКА: ОТКРЫТИЕ СТРАНИЦЫ ==========
+    trackPageView('Home');    
     
     // ========== ОПТИМИЗИРОВАННАЯ ЗАГРУЗКА ==========
     // Загружаем ВСЕ данные параллельно для ускорения
@@ -7676,6 +7718,9 @@ window.toggleRulesSection = function(sectionId) {
 }
 
 function openRulesModal() {
+    // ========== АНАЛИТИКА ==========
+    trackEvent('modal_open', { modal: 'rules' });
+
     // Показываем лоадер с прогрессом
     showPageLoader();
     updateLoaderProgress(10, t('loading_rules'));
@@ -8090,6 +8135,9 @@ async function initTrophy2026() {
 
 // Открытие модального окна
 window.openTrophy2026Modal = function() {
+    // ========== АНАЛИТИКА ==========
+    trackEvent('modal_open', { modal: 'trophy_2026' });
+
     const modal = document.getElementById('trophy2026-modal');
     if (modal) {
         modal.style.display = 'flex';
@@ -8385,6 +8433,9 @@ async function initTrophy3D() {
 }
 
 window.openTrophyModal = function() {
+    // ========== АНАЛИТИКА ==========
+    trackEvent('modal_open', { modal: 'trophy' });
+
     const modal = document.getElementById('trophy-modal');
     if (modal) {
         updateTrophyModalContent();
@@ -9768,6 +9819,9 @@ async function backgroundLoadAllPredictions() {
 
 // Открытие модального окна прогнозов
 async function openPredictionModal() {
+    // ========== АНАЛИТИКА ==========
+    trackEvent('modal_open', { modal: 'predictions' });
+    
     if (isPredictionModalOpen) return;
 
     stopFabWaitingAnimation();
@@ -10343,6 +10397,78 @@ function initArenaRaceToggle() {
     }
 }
 
+// ==================== ОТСЛЕЖИВАНИЕ ПРОИЗВОДИТЕЛЬНОСТИ ====================
+function trackPerformance() {
+    try {
+        const perfData = performance.getEntriesByType('navigation')[0];
+        if (perfData) {
+            const loadTime = Math.round(perfData.loadEventEnd - perfData.fetchStart);
+            const domReady = Math.round(perfData.domContentLoadedEventEnd - perfData.fetchStart);
+            const firstByte = Math.round(perfData.responseStart - perfData.fetchStart);
+            
+            // Отправляем только если загрузка > 0
+            if (loadTime > 0) {
+                trackEvent('performance', {
+                    load_time: loadTime,
+                    dom_ready: domReady,
+                    first_byte: firstByte,
+                    redirects: perfData.redirectCount
+                });
+            }
+        }
+    } catch(e) {
+        // Игнорируем
+    }
+}
+
+// Отслеживаем LCP (Largest Contentful Paint)
+try {
+    if (window.performance && PerformanceObserver) {
+        const observer = new PerformanceObserver((list) => {
+            const entries = list.getEntries();
+            const lastEntry = entries[entries.length - 1];
+            if (lastEntry) {
+                trackEvent('web_vitals', {
+                    lcp: Math.round(lastEntry.startTime)
+                });
+            }
+        });
+        observer.observe({ entryTypes: ['largest-contentful-paint'] });
+    }
+} catch(e) {
+    // Игнорируем
+}
+
+// Отправляем через 2 секунды после загрузки
+window.addEventListener('load', function() {
+    setTimeout(trackPerformance, 2000);
+});
+
+// ==================== ВРЕМЯ НА СТРАНИЦЕ ====================
+let pageStartTime = Date.now();
+let heartbeatSent = false;
+
+function trackSessionDuration() {
+    const duration = Math.round((Date.now() - pageStartTime) / 1000);
+    if (duration > 5) {
+        trackEvent('session_duration', { seconds: duration });
+    }
+}
+
+window.addEventListener('beforeunload', function() {
+    trackSessionDuration();
+});
+
+// Отправляем heartbeat каждые 30 секунд (только если страница активна)
+setInterval(() => {
+    if (!document.hidden) {
+        const duration = Math.round((Date.now() - pageStartTime) / 1000);
+        if (duration % 30 === 0 && duration > 0) {
+            trackEvent('session_heartbeat', { seconds: duration });
+        }
+    }
+}, 10000);
+
 setInterval(updateUTCTime, 10000);
 updateUTCTime();
 
@@ -10351,6 +10477,15 @@ window.addEventListener('DOMContentLoaded', start);
 // ==================== ГЛОБАЛЬНЫЙ ОБРАБОТЧИК ОШИБОК ====================
 window.addEventListener('error', function(event) {
     console.error('Global error caught:', event.error);
+    
+    // ========== АНАЛИТИКА ==========
+    trackEvent('error', {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        stack: event.error?.stack || 'No stack'
+    });
     
     if (event.error && event.error.message && 
         (event.error.message.includes('undefined') || 
@@ -10373,6 +10508,13 @@ window.addEventListener('error', function(event) {
 
 window.addEventListener('unhandledrejection', function(event) {
     console.error('Unhandled promise rejection:', event.reason);
+    
+    // ========== АНАЛИТИКА ==========
+    trackEvent('error', {
+        message: event.reason?.message || 'Unhandled rejection',
+        type: 'promise',
+        stack: event.reason?.stack || 'No stack'
+    });
     
     const statusDiv = document.getElementById('sync-status');
     if (statusDiv && !statusDiv.innerHTML.includes('ошибка')) {
